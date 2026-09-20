@@ -4,17 +4,27 @@ import { UploadOutlined } from '@ant-design/icons';
 import { DocTree } from '../../components/DocTree/DocTree';
 import { MarkdownViewer } from '../../components/markdown/MarkdownViewer';
 import { UploadDialog } from '../../components/UploadDialog';
+import { NameDialog } from '../../components/NameDialog';
 import { adminApi } from '../../api/adminApi';
 import { useDocTreeStore, type TreeItem } from '../../stores/docTreeStore';
 import './Dashboard.css';
 
 type NodeAction = 'rename' | 'delete' | 'newFolder' | 'newDoc';
+// 命名弹窗意图：newFolderRoot=根建夹 newDocRoot=根建文档 newFolder/newDoc=树内子节点 rename=重命名
+type NameIntent =
+  | { kind: 'newFolderRoot' }
+  | { kind: 'newDocRoot' }
+  | { kind: 'newFolder'; node: TreeItem }
+  | { kind: 'newDoc'; node: TreeItem }
+  | { kind: 'rename'; node: TreeItem };
 
 // 管理工作台：左侧管理树（CRUD）+ 右侧预览/编辑工作区（M1）
 export default function Dashboard() {
   const { load, select, selectedId } = useDocTreeStore();
 
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [nameIntent, setNameIntent] = useState<NameIntent | null>(null);
+  const [nameSubmitting, setNameSubmitting] = useState(false);
   const [activeDoc, setActiveDoc] = useState<{ id: number; name: string; content: string } | null>(
     null,
   );
@@ -51,11 +61,7 @@ export default function Dashboard() {
   const onAction = async (action: NodeAction, node: TreeItem) => {
     try {
       if (action === 'rename') {
-        const name = window.prompt('新名称', node.name);
-        if (!name?.trim()) return;
-        await adminApi.rename(node.id, name.trim());
-        message.success('已重命名');
-        await load();
+        setNameIntent({ kind: 'rename', node });
       } else if (action === 'delete') {
         const count = countSubtree(node);
         Modal.confirm({
@@ -70,21 +76,49 @@ export default function Dashboard() {
           },
         });
       } else if (action === 'newFolder') {
-        const name = window.prompt('文件夹名称', '新建文件夹');
-        if (!name?.trim()) return;
-        await adminApi.createFolder(node.id, name.trim());
-        message.success('已创建');
-        await load();
+        setNameIntent({ kind: 'newFolder', node });
       } else if (action === 'newDoc') {
-        const name = window.prompt('文档标题', '未命名文档');
-        if (!name?.trim()) return;
-        const res = await adminApi.createDoc(node.id, name.trim());
-        message.success(`已创建：${res.finalName}`);
-        await load();
-        select(res.id);
+        setNameIntent({ kind: 'newDoc', node });
       }
     } catch (e) {
       message.error(e instanceof Error ? e.message : '操作失败');
+    }
+  };
+
+  // 命名弹窗提交（统一处理 5 种意图）
+  const onNameOk = async (name: string) => {
+    if (!nameIntent) return;
+    setNameSubmitting(true);
+    try {
+      switch (nameIntent.kind) {
+        case 'newFolderRoot':
+          await adminApi.createFolder(0, name);
+          message.success('已创建文件夹');
+          break;
+        case 'newDocRoot':
+        case 'newDoc': {
+          const parentId = nameIntent.kind === 'newDocRoot' ? 0 : nameIntent.node.id;
+          const res = await adminApi.createDoc(parentId, name);
+          message.success(`已创建：${res.finalName}`);
+          await load();
+          select(res.id);
+          break;
+        }
+        case 'newFolder':
+          await adminApi.createFolder(nameIntent.node.id, name);
+          message.success('已创建文件夹');
+          break;
+        case 'rename':
+          await adminApi.rename(nameIntent.node.id, name);
+          message.success('已重命名');
+          break;
+      }
+      if (nameIntent.kind !== 'newDocRoot' && nameIntent.kind !== 'newDoc') await load();
+      setNameIntent(null);
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '操作失败');
+    } finally {
+      setNameSubmitting(false);
     }
   };
 
@@ -108,25 +142,10 @@ export default function Dashboard() {
           <Button type="primary" icon={<UploadOutlined />} onClick={() => setUploadOpen(true)}>
             上传
           </Button>
-          <Button
-            onClick={async () => {
-              const name = window.prompt('文档标题', '未命名文档');
-              if (!name?.trim()) return;
-              const res = await adminApi.createDoc(0, name.trim());
-              await load();
-              select(res.id);
-            }}
-          >
+          <Button onClick={() => setNameIntent({ kind: 'newDocRoot' })}>
             新建文档
           </Button>
-          <Button
-            onClick={async () => {
-              const name = window.prompt('文件夹名称', '新建文件夹');
-              if (!name?.trim()) return;
-              await adminApi.createFolder(0, name.trim());
-              await load();
-            }}
-          >
+          <Button onClick={() => setNameIntent({ kind: 'newFolderRoot' })}>
             新建文件夹
           </Button>
         </Space>
@@ -191,6 +210,19 @@ export default function Dashboard() {
         onUploaded={async () => {
           await load();
         }}
+      />
+      <NameDialog
+        open={nameIntent !== null}
+        title={
+          nameIntent?.kind === 'rename' ? '重命名'
+          : nameIntent?.kind === 'newFolderRoot' || nameIntent?.kind === 'newFolder' ? '新建文件夹'
+          : '新建文档'
+        }
+        initialValue={nameIntent?.kind === 'rename' ? nameIntent.node.name : undefined}
+        placeholder={nameIntent?.kind.startsWith('newFolder') ? '新建文件夹' : '未命名文档'}
+        confirmLoading={nameSubmitting}
+        onOk={onNameOk}
+        onCancel={() => setNameIntent(null)}
       />
     </>
   );

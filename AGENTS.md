@@ -67,6 +67,7 @@ sql/init.sql         # 建表脚本（迁移需人工确认）
 - 请求：只通过 `src/api/` 封装调用，组件内不得直接 import axios。
 - Markdown 渲染必须走 `components/markdown/MarkdownViewer.tsx` 统一管线（含 rehype-sanitize），禁止绕过消毒直接 `dangerouslySetInnerHTML`。
 - 前台组件禁止 import antd；AntD 组件只能出现在 `pages/admin/`、`layouts/AdminLayout` 及后台专用 components。
+- 后台交互必须 AntD 组件优先（skill：`antd-component-first`）：输入弹窗用 Modal+Form、确认用 Modal.confirm/Popconfirm、提示用 message/notification；**禁止 window.prompt / window.confirm / window.alert**。antd 无对应组件时才可用其基础组件组装，纯逻辑工具不受限。
 - 响应式：断点常量统一用 `utils/breakpoints.ts`（<768 移动 / 768-1279 平板 / ≥1280 桌面），样式优先 CSS 变量。
 
 ### 5.2 后端

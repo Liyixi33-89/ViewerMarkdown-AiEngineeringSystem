@@ -14,6 +14,7 @@
     ├── _template/       # 新建 skill 模板（SKILL.md 含 YAML frontmatter）
     ├── add-portal-page/
     ├── add-admin-api/
+    ├── antd-component-first/   # 后台 UI 必须 AntD 组件优先，禁原生弹窗
     └── verify-workflow/
 ```
 
