@@ -1,0 +1,67 @@
+/* 全局样式与主题变量：前台阅读区自研，不依赖 antd */
+:root {
+  --font-size: 16px;
+  --line-height: 1.75;
+  --content-width: 800px;
+  --sidebar-width: 260px;
+  --topbar-height: 56px;
+  --gap: 16px;
+
+  --bg: #ffffff;
+  --bg-soft: #f6f8fa;
+  --bg-topbar: #ffffff;
+  --border: #e5e7eb;
+  --text: #1f2328;
+  --text-soft: #6b7280;
+  --primary: #2563eb;
+  --primary-soft: #dbeafe;
+  --danger: #dc2626;
+  --code-bg: #f6f8fa;
+}
+
+[data-theme='dark'] {
+  --bg: #0f1117;
+  --bg-soft: #1a1d26;
+  --bg-topbar: #14161d;
+  --border: #2a2e3a;
+  --text: #e6e8ee;
+  --text-soft: #9aa1af;
+  --primary: #60a5fa;
+  --primary-soft: #1e3a8a55;
+  --danger: #f87171;
+  --code-bg: #1a1d26;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea { font: inherit; color: inherit; }
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* 移动端断点变量覆写（细则见 技术设计文档 2.6） */
+@media (max-width: 767px) {
+  :root { --font-size: 15px; --gap: 12px; }
+}
+
+/* 通用工具类 */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--bg); transition: all .15s;
+}
+.btn:hover { border-color: var(--primary); color: var(--primary); }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover { opacity: .9; color: #fff; }
+.btn-danger { color: var(--danger); }

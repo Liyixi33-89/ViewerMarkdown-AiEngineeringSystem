@@ -1,0 +1,50 @@
+/* 目录树（前台只读 / 后台管理双模式复用） */
+.doc-tree {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 6px 16px;
+  font-size: 14px;
+}
+.tree-empty {
+  padding: 24px 16px; color: var(--text-soft); font-size: 13px; text-align: center;
+}
+
+.tree-node {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px; border-radius: 6px;
+  cursor: pointer; user-select: none;
+  color: var(--text);
+  min-height: 44px; /* 移动端触摸目标 */
+}
+.tree-node:hover { background: var(--bg); }
+.tree-node.selected { background: var(--primary-soft); color: var(--primary); font-weight: 600; }
+.tree-node .arrow {
+  width: 18px; height: 18px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-soft);
+  transition: transform .15s;
+}
+.tree-node .arrow.expanded { transform: rotate(90deg); }
+.tree-node .arrow.placeholder { visibility: hidden; }
+.tree-node .node-icon { flex: none; }
+.tree-node .node-name {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tree-node .node-actions { margin-left: auto; display: none; gap: 2px; }
+.tree-node:hover .node-actions { display: inline-flex; }
+.tree-node .node-actions button {
+  width: 26px; height: 26px; border-radius: 4px; color: var(--text-soft);
+}
+.tree-node .node-actions button:hover { color: var(--primary); background: var(--bg-soft); }
+
+/* 树内筛选输入 */
+.tree-filter {
+  margin: 4px 10px 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  outline: none;
+  width: calc(100% - 20px);
+}
+.tree-filter:focus { border-color: var(--primary); }

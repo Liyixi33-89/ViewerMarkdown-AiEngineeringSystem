@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+target/
+dist/
+
+# env & secrets
+.env
+.env.*
+*.local
+
+# logs
+*.log
+logs/
+npm-debug.log*
+
+# ide
+.idea/
+.vscode/
+*.iml
+
+# os
+.DS_Store
+Thumbs.db
+
+# ai metrics（本地验证流水，不入库）
+.agent/metrics/
+
+# h2 开发库数据文件（本地数据，不入库）
+backend/data/
+
+# session temp files（会话临时文件，不入库）
+.session_tmps/

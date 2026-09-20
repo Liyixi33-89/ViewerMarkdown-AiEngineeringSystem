@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# 统一验证入口（跨平台 bash 版，与 verify.ps1 等价）
+# 用法：bash scripts/verify --scope quick|commit|ci
+set -uo pipefail
+
+SCOPE="quick"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --scope) SCOPE="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+FAILED=0
+STARTED=$(date +%s)
+FAIL_ITEMS=()
+
+step() { printf '\n==> %s\n' "$1"; }
+ok()   { printf '    [PASS] %s\n' "$1"; }
+bad()  { printf '    [FAIL] %s\n' "$1"; FAILED=$((FAILED+1)); FAIL_ITEMS+=("$1"); }
+
+# ---------- 前端 ----------
+if [[ -f "$ROOT/frontend/package.json" ]]; then
+  if [[ ! -d "$ROOT/frontend/node_modules" ]]; then
+    bad "frontend/node_modules 不存在，请先: cd frontend && npm install"
+  else
+    step "前端 tsc --noEmit"
+    (cd "$ROOT/frontend" && npm run typecheck >/dev/null 2>&1) \
+      && ok "tsc" || bad "tsc"
+    if [[ "$SCOPE" != "quick" ]]; then
+      step "前端 vite build"
+      (cd "$ROOT/frontend" && npm run build >/dev/null 2>&1) \
+        && ok "build" || bad "build"
+    fi
+  fi
+else
+  printf '    [SKIP] frontend 未初始化\n'
+fi
+
+# ---------- 后端 ----------
+if [[ -f "$ROOT/backend/pom.xml" ]]; then
+  if ! command -v mvn >/dev/null 2>&1; then
+    printf '    [SKIP] 未找到 mvn（后端验证跳过）\n'
+  else
+    step "后端 mvn compile"
+    (cd "$ROOT/backend" && mvn -q compile >/dev/null 2>&1) \
+      && ok "compile" || bad "compile"
+    if [[ "$SCOPE" != "quick" ]]; then
+      step "后端 mvn test"
+      (cd "$ROOT/backend" && mvn -q test >/dev/null 2>&1) \
+        && ok "test" || bad "test"
+    fi
+  fi
+else
+  printf '    [SKIP] backend 未初始化\n'
+fi
+
+# ---------- E2E（预留） ----------
+if [[ "$SCOPE" == "ci" ]]; then
+  printf '\n==> [SKIP] E2E 未配置（M2 接入 Playwright）\n'
+fi
+
+# ---------- 文档防腐 ----------
+step "文档防腐检查（AGENTS.md 声明路径 / spec 完整性）"
+declare -a DECLARED=(
+  "frontend/src/routes" "frontend/src/layouts" "frontend/src/components"
+  "frontend/src/stores" "frontend/src/pages" "frontend/src/api"
+  "backend/src/main/java/com/mdviewer/portal"
+  "backend/src/main/java/com/mdviewer/admin"
+  "backend/src/main/java/com/mdviewer/auth"
+  "backend/src/main/java/com/mdviewer/domain"
+  "backend/src/main/java/com/mdviewer/common"
+  "backend/src/main/java/com/mdviewer/config"
+  "backend/src/main/java/com/mdviewer/sync"
+  "docs" ".agent/specs" ".agent/skills" "scripts" "sql"
+)
+for d in "${DECLARED[@]}"; do
+  [[ -d "$ROOT/$d" ]] || bad "文档防腐: AGENTS.md 声明的目录缺失 $d"
+done
+for s in add-portal-page add-admin-api verify-workflow; do
+  [[ -f "$ROOT/.agent/skills/$s/SKILL.md" ]] || bad "文档防腐: skill 缺失 $s"
+done
+for specdir in "$ROOT/.agent/specs"/*/; do
+  name="$(basename "$specdir")"
+  [[ "$name" == "_template" ]] && continue
+  for f in spec.md tasks.md acceptance.md; do
+    [[ -f "$specdir$f" ]] || bad "文档防腐: spec 三件套不完整 $name/$f"
+  done
+done
+[[ $FAILED -eq 0 ]] && ok "docs-drift"
+
+# ---------- 防腐审计回写 ----------
+if [[ "$SCOPE" != "quick" && $FAILED -eq 0 ]]; then
+  TODAY="$(date +%F)"
+  for specfile in "$ROOT/.agent/specs"/*/spec.md; do
+    [[ -f "$specfile" ]] || continue
+    if grep -q "status: active" "$specfile"; then
+      sed -i -E "s/last_verified_at(\s*\|?)[^|\r\n]*/last_verified_at\1 $TODAY/" "$specfile"
+    fi
+  done
+  ok "spec last_verified_at -> $TODAY"
+fi
+
+# ---------- 度量流水 ----------
+METRICS_DIR="$ROOT/.agent/metrics"
+mkdir -p "$METRICS_DIR"
+DURATION=$(( $(date +%s) - STARTED ))
+if [[ $FAILED -eq 0 ]]; then PASS=true; else PASS=false; fi
+printf '{"ts":"%s","scope":"%s","pass":%s,"duration":%d,"failures":["%s"]}\n' \
+  "$(date +%FT%T)" "$SCOPE" "$PASS" "$DURATION" "${FAIL_ITEMS[*]}" \
+  >> "$METRICS_DIR/verify-log.jsonl"
+
+# ---------- 汇总 ----------
+printf '\n================================\n'
+if [[ $FAILED -eq 0 ]]; then
+  printf 'VERIFY [%s] : ALL PASS\n' "$SCOPE"
+  exit 0
+else
+  printf 'VERIFY [%s] : %d 项失败，请依据上方首个错误修复\n' "$SCOPE" "$FAILED"
+  exit 1
+fi

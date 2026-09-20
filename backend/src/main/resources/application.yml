@@ -1,0 +1,50 @@
+server:
+  port: 8090   # 8080 被本机 svchost(HTTP.sys) 占用，改用 8090
+
+spring:
+  datasource:
+    # 开发默认 H2 文件库（数据落盘，重启不丢）；生产切 MySQL：jdbc:mysql://localhost:3306/md_viewer?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    url: jdbc:h2:file:./data/md_viewer;MODE=MySQL;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always                # 启动执行 schema-h2.sql 建表
+      schema-locations: classpath:schema-h2.sql
+      encoding: utf-8
+  servlet:
+    multipart:
+      max-file-size: 2MB       # PRD：单文件 ≤2MB
+      max-request-size: 10MB
+  jackson:
+    default-property-inclusion: non_null
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted   # 软删除（回收站）
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+mdviewer:
+  jwt:
+    # 生产环境请通过环境变量覆盖：MDVIEWER_JWT_SECRET
+    secret: ${MDVIEWER_JWT_SECRET:dev-only-secret-change-me-in-production-0123456789}
+    access-token-hours: 2
+    refresh-token-days: 7
+  init:
+    admin-username: admin
+    admin-password: admin123       # 默认管理员（首次启动后请修改）
+    enabled: true                  # 启动时初始化默认管理员与示例文档
+
+springdoc:
+  swagger-ui:
+    path: /doc.html
+
+logging:
+  level:
+    com.mdviewer: info

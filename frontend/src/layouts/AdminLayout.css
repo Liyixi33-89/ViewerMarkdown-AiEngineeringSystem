@@ -1,0 +1,19 @@
+.admin-layout { height: 100%; display: flex; flex-direction: column; }
+.admin-topbar {
+  height: 56px; flex: none;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px;
+  background: #001529; color: rgba(255,255,255,.85);
+}
+.admin-topbar .logo { color: #fff; font-weight: 700; font-size: 16px; }
+.admin-topbar .spacer { flex: 1; }
+.admin-main { flex: 1; min-height: 0; display: flex; }
+.admin-sidebar {
+  width: 300px; flex: none;
+  border-right: 1px solid var(--border);
+  background: var(--bg-soft);
+  display: flex; flex-direction: column; min-height: 0;
+}
+.admin-sidebar .tree-wrap { flex: 1; overflow: auto; min-height: 0; padding: 8px; }
+.admin-workbench { flex: 1; min-width: 0; overflow: auto; padding: 16px 24px; }
+.workbench-empty { color: var(--text-soft); text-align: center; margin-top: 120px; }

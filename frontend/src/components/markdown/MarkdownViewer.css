@@ -1,0 +1,44 @@
+/* Markdown 正文排版（前台阅读体验，PRD 3.5.2） */
+.md-body {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 24px var(--gap) 64px;
+  word-break: break-word;
+}
+.md-body h1, .md-body h2 { border-bottom: 1px solid var(--border); padding-bottom: .3em; }
+.md-body h1 { font-size: 1.9em; margin: .8em 0 .5em; }
+.md-body h2 { font-size: 1.45em; margin: 1.2em 0 .5em; }
+.md-body h3 { font-size: 1.2em; margin: 1em 0 .4em; }
+.md-body h4, .md-body h5, .md-body h6 { font-size: 1.05em; margin: 1em 0 .4em; }
+
+.md-body p { margin: .7em 0; }
+.md-body blockquote {
+  margin: .8em 0; padding: .3em 1em;
+  border-left: 4px solid var(--primary);
+  background: var(--bg-soft);
+  color: var(--text-soft);
+  border-radius: 0 6px 6px 0;
+}
+.md-body ul, .md-body ol { padding-left: 1.6em; }
+.md-body li { margin: .25em 0; }
+.md-body hr { border: none; border-top: 1px solid var(--border); margin: 1.6em 0; }
+
+/* 表格超宽横向滚动 */
+.md-body table {
+  border-collapse: collapse; width: 100%;
+  display: block; overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.md-body th, .md-body td {
+  border: 1px solid var(--border);
+  padding: 8px 12px; text-align: left; font-size: .95em;
+}
+.md-body th { background: var(--bg-soft); }
+
+.md-body input[type='checkbox'] { margin-right: 6px; }
+.md-img { max-width: 100%; border-radius: 8px; }
+
+@media (max-width: 767px) {
+  .md-body { padding: 16px var(--gap) 48px; }
+  .md-body h1 { font-size: 1.6em; }
+}
