@@ -18,7 +18,8 @@ export default function PortalLayout() {
   const { load, select, selectedId } = useDocTreeStore();
   const theme = useViewerPrefs((s) => s.theme);
   const setTheme = useViewerPrefs((s) => s.setTheme);
-  const collapsed = useViewerPrefs((s) => s.sidebarCollapsed);
+  // 折叠态为本地 UI 状态：刷新后默认展开，不写入 localStorage
+  const [collapsed, setCollapsed] = useState(false);
 
   // 主题应用到根节点（system 跟随系统）
   useEffect(() => {
@@ -104,7 +105,7 @@ export default function PortalLayout() {
                 className="icon-btn"
                 style={{ marginLeft: 'auto', width: 28, height: 28 }}
                 aria-label="折叠侧栏"
-                onClick={() => useViewerPrefs.getState().toggleSidebar()}
+                onClick={() => setCollapsed(true)}
               >
                 «
               </button>
@@ -121,7 +122,7 @@ export default function PortalLayout() {
             className="icon-btn sidebar-expand-fab"
             aria-label="展开侧栏"
             title="展开目录"
-            onClick={() => useViewerPrefs.getState().toggleSidebar()}
+            onClick={() => setCollapsed(false)}
           >
             »
           </button>

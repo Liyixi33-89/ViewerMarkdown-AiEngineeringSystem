@@ -29,8 +29,12 @@ description: 前台布局类「组件不显示」问题的排查路径。适用�
 3. **展开按钮在侧栏内部**——宽 0 后按钮也不可见，用户被锁死在折叠态
 4. 视觉表象 = 「树不回显」，极易误判为数据/渲染 bug
 
-**修复**：折叠态在内容区渲染固定定位的展开按钮（`.sidebar-expand-fab`，fixed 左下角）——
-任何「折叠自身」的 UI 都必须在折叠区外保留恢复入口。
+**修复**：
+1. 短期：折叠态在内容区渲染固定定位的展开按钮（`.sidebar-expand-fab`，fixed 左下角）——
+   任何「折叠自身」的 UI 都必须在折叠区外保留恢复入口。
+2. 终局（2026-09-20 后续）：折叠态不再持久化——`viewerPrefsStore` 移除 `sidebarCollapsed`
+   字段（persist 加 `partialize` 只存 theme/scrollPositions），折叠态改为 PortalLayout
+   本地 `useState`，每次刷新默认展开。UI 临时态（折叠/抽屉/选中态）一律不进 localStorage。
 
 ## 已知坑与规避
 
