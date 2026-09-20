@@ -42,6 +42,14 @@ description: Linux 服务器部署前端静态资源 + Spring Boot 的坑位清�
    - 本地随机生成 → scp 到服务器 `EnvironmentFile`（600 权限）
    - systemd unit 里只引用文件路径，secret 永不出现在命令行历史
 
+7. **H2 文件库搬迁必须停机窗口操作**
+   - 线上 H2 运行中持有文件锁：热覆盖 mv.db 必损坏 → 重启后 H2 重建空库，
+     `init.enabled=true` 还会插入示例数据，看似「成功」实则数据全丢
+   - 本地上传前确认进程死透：残留 java 进程锁文件 → scp 读出 0 字节（`Domain error`），
+     上传的是空文件。用 `netstat -ano | findstr :8090` + `Get-Process java` 双查
+   - 正确顺序：**停线上 → rm 旧库 → scp → 启动**，传完核对文件字节数再启动
+   - 被锁时可复制副本绕开：`Copy-Item` 到 %TEMP% 再传（进程停掉后副本是完整的）
+
 ## 部署快捷序列（复用模板）
 
 ```bash
