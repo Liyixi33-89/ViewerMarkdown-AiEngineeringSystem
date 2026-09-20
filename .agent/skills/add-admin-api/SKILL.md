@@ -26,6 +26,8 @@ description: 为后台 /api/admin/** 或前台 /api/portal/** 新增接口时使
 - 层级上限 5：移动前计算 `目标深度 + 子树高度`（4092）。
 - `doc_node.path` 冗余列在移动/恢复后必须同步重算整棵子树，否则前缀查询结果错误。
 - MyBatis-Plus `@TableLogic` 只对自动注入的查询生效；自定义 XML SQL 需手动加 `deleted=0`。
+- **@TableLogic 字段不能经实体更新**：`setDeleted(1)` + `updateById()` 会被 MP 忽略（该字段由 MP 托管），导致软删除静默失败——表象是接口 200 但 portal 查询照常返回、`deleted_at` 有值而 `deleted=0`。软删除必须用显式 SQL（`@Update` 注解）直接写列。排查手段：JDBC 直查数据库对比标记位。
+- **Security 白名单核对**：`/auth/refresh` 这类「自携带凭证」的接口必须 permitAll，否则过期后无法无感续期（前端只存 refreshToken 不调用等于功能缺失，核查脚本要把「前端是否真的用了某接口」纳入范围）。
 - **搜索接口必须过滤节点类型**：portal 搜索若不过滤 `type=DOC`，文件夹会出现在搜索结果里，前端点击后 `getDocContent` 抛 4041 导致导航失败（已修复：PortalService.search 加 `eq(type, TYPE_DOC)`）。
 - **H2 内存库重启即丢数据**：`jdbc:h2:mem:` 仅进程存活期间有效，开发演示务必用文件模式 `jdbc:h2:file:./data/md_viewer`（数据落 `backend/data/`，已入 .gitignore）。
 - PowerShell 里用 curl `-d` 传含 `\n` 的 JSON 会被转义截断导致后端 Jackson 报 `Unexpected end-of-input`；正确做法是 JSON 写入临时文件后 `--data-binary "@file.json"`。

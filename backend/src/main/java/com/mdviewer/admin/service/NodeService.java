@@ -130,18 +130,9 @@ public class NodeService {
     @Transactional
     public void softDelete(Long id) {
         DocNode node = mustExist(id);
-        // 整棵子树标记（path 前缀批量）
-        List<DocNode> subtree = nodeMapper.selectList(new LambdaQueryWrapper<DocNode>()
-                .likeRight(DocNode::getPath, node.getPath()));
-        LocalDateTime now = LocalDateTime.now();
-        for (DocNode n : subtree) {
-            n.setDeleted(1);
-            n.setDeletedAt(now);
-            nodeMapper.updateById(n);
-        }
-        node.setDeleted(1);
-        node.setDeletedAt(now);
-        nodeMapper.updateById(node);
+        // 整棵子树软删除：path 前缀 + 自身（显式 SQL，@TableLogic 字段无法经实体更新）
+        int affected = nodeMapper.softDeleteSubtree(node.getPath(), node.getId(), LocalDateTime.now());
+        if (affected == 0) throw new BizException(4041, "节点不存在");
         versionRegistry.bump();
     }
 
