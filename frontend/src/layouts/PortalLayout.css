@@ -43,6 +43,21 @@
   min-height: 0;
 }
 .portal-main:not(.collapsed) .portal-sidebar { overflow: auto; }
+
+/* 折叠态展开按钮：固定在左上角内容区上方（逃生入口） */
+.sidebar-expand-fab {
+  position: fixed;
+  left: 8px;
+  bottom: 24px;
+  z-index: 35;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  font-size: 16px;
+}
 .sidebar-toolbar {
   padding: 10px var(--gap) 4px;
   display: flex; align-items: center; gap: 8px;

@@ -15,7 +15,7 @@ export default function PortalLayout() {
   const isMobile = useMediaQuery(isMobileQuery);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const { load, loaded, select, selectedId } = useDocTreeStore();
+  const { load, select, selectedId } = useDocTreeStore();
   const theme = useViewerPrefs((s) => s.theme);
   const setTheme = useViewerPrefs((s) => s.setTheme);
   const collapsed = useViewerPrefs((s) => s.sidebarCollapsed);
@@ -27,10 +27,11 @@ export default function PortalLayout() {
     document.documentElement.dataset.theme = effective;
   }, [theme]);
 
-  // 首次加载树
+  // 首次加载树：无条件执行（幂等）。不依赖 loaded 标志——
+  // persist 恢复的过期 loaded=true 会导致跳过加载、树空白（已踩坑）
   useEffect(() => {
-    if (!loaded) void load();
-  }, [loaded, load]);
+    void load();
+  }, [load]);
 
   // 版本轮询：变更时刷新树；当前文档由 DocView 自行监听 nodes 变化重载
   usePolling(() => undefined);
@@ -113,6 +114,17 @@ export default function PortalLayout() {
         </aside>
         {isMobile && drawerOpen && (
           <div className="sidebar-backdrop" onClick={() => setDrawerOpen(false)} />
+        )}
+        {/* 折叠态逃生按钮：侧栏宽 0 后内部按钮不可见，必须在内容区提供展开入口 */}
+        {!isMobile && collapsed && (
+          <button
+            className="icon-btn sidebar-expand-fab"
+            aria-label="展开侧栏"
+            title="展开目录"
+            onClick={() => useViewerPrefs.getState().toggleSidebar()}
+          >
+            »
+          </button>
         )}
         <main className="portal-content" id="portal-content">
           <Outlet />

@@ -57,6 +57,18 @@ export const useDocTreeStore = create<DocTreeState>()(
     {
       name: 'mdv-tree',
       partialize: (s) => ({ selectedId: s.selectedId, expandedIds: s.expandedIds }),
+      // 防御旧版本残留：合并时强制运行时字段复位（loaded 必须由真实请求置位）
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<DocTreeState>;
+        return {
+          ...current,
+          selectedId: p.selectedId ?? null,
+          expandedIds: Array.isArray(p.expandedIds) ? p.expandedIds : [],
+          nodes: [],
+          tree: [],
+          loaded: false,
+        };
+      },
     },
   ),
 );

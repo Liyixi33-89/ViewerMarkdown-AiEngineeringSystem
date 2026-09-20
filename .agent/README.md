@@ -15,6 +15,7 @@
     ├── add-portal-page/
     ├── add-admin-api/
     ├── antd-component-first/   # 后台 UI 必须 AntD 组件优先，禁原生弹窗
+    ├── frontend-layout-debug/  # 「组件不显示」类问题的三层排查路径
     └── verify-workflow/
 ```
 
