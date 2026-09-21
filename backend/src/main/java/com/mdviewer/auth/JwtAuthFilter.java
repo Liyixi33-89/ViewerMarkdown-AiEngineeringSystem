@@ -27,8 +27,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
+        String token = null;
         if (header != null && header.startsWith("Bearer ")) {
-            Claims claims = jwtUtil.parse(header.substring(7));
+            token = header.substring(7);
+        } else {
+            // cookie 会话（2026-09-21：登录态迁移 HttpOnly cookie）
+            jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                for (jakarta.servlet.http.Cookie c : cookies) {
+                    if ("mdv_token".equals(c.getName())) {
+                        token = c.getValue();
+                        break;
+                    }
+                }
+            }
+        }
+        if (token != null) {
+            Claims claims = jwtUtil.parse(token);
             if (claims != null) {
                 String role = claims.get("role", String.class);
                 var auth = new UsernamePasswordAuthenticationToken(

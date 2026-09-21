@@ -11,11 +11,11 @@ const DocsPage = lazy(() => import('../pages/admin/DocsPage'));
 const UploadPage = lazy(() => import('../pages/admin/UploadPage'));
 const PasswordPage = lazy(() => import('../pages/admin/PasswordPage'));
 
-// 已登录访问 /admin/login 时跳工作台
+// 已登录访问 /admin/login 时跳工作台（cookie 会话：authed 标记）
 function RedirectIfAuthed({ children }: { children: JSX.Element }) {
-  const token = useAuthStore((s) => s.accessToken);
+  const authed = useAuthStore((s) => s.authed);
   const location = useLocation();
-  if (token && location.pathname === '/admin/login') {
+  if (authed && location.pathname === '/admin/login') {
     return <Navigate to="/admin" replace />;
   }
   return children;

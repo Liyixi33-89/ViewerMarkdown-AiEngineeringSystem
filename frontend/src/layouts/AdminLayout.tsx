@@ -2,6 +2,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Layout, Menu, Space, Typography } from 'antd';
 import { FileTextOutlined, LockOutlined, LogoutOutlined, UploadOutlined, DashboardOutlined } from '@ant-design/icons';
 import { message } from 'antd';
+import { adminApi } from '../api/adminApi';
 import { useAuthStore } from '../stores/authStore';
 
 const { Header, Sider, Content } = Layout;
@@ -57,6 +58,7 @@ export default function AdminLayout() {
             icon={<LogoutOutlined />}
             style={{ color: 'rgba(255,255,255,.75)' }}
             onClick={() => {
+              void adminApi.logout().catch(() => undefined); // 清服务端 cookie（失败不阻塞）
               logout();
               message.success('已退出');
               navigate('/admin/login', { replace: true });

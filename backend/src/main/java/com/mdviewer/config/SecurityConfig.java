@@ -40,7 +40,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/api/portal/**").permitAll()
                     .requestMatchers("/api/admin/auth/login").permitAll()
-                    .requestMatchers("/api/admin/auth/refresh").permitAll() // 无感续期：refreshToken 自校验
+                    .requestMatchers("/api/admin/auth/logout").permitAll()
+                    .requestMatchers("/api/admin/auth/me").permitAll() // cookie 会话恢复：controller 内校验 subject
                     .requestMatchers("/api/admin/**").hasAnyRole("EDITOR", "SUPER_ADMIN")
                     .requestMatchers("/doc.html", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
                     .anyRequest().permitAll())

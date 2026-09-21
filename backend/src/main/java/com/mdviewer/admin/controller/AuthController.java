@@ -8,10 +8,10 @@ import com.mdviewer.common.Result;
 import com.mdviewer.domain.entity.AdminUser;
 import com.mdviewer.domain.mapper.AdminUserMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import io.jsonwebtoken.Claims;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 
-/** 后台认证：登录 / 刷新 token */
+/** 后台认证：登录（HttpOnly cookie 24h）/ 改密码 / 当前用户（2026-09-21 cookie 会话改造） */
 @RestController
 @RequestMapping("/api/admin/auth")
 @Validated
@@ -28,6 +28,10 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final BCryptPasswordEncoder encoder;
     private final LoginGuard loginGuard;
+
+    /** cookie 会话有效期 24h */
+    private static final int COOKIE_MAX_AGE = 24 * 60 * 60;
+    private static final String COOKIE_NAME = "mdv_token";
 
     public AuthController(AdminUserMapper userMapper, JwtUtil jwtUtil,
                           BCryptPasswordEncoder encoder, LoginGuard loginGuard) {
@@ -40,7 +44,8 @@ public class AuthController {
     public record LoginReq(@NotBlank String username, @NotBlank String password) {}
 
     @PostMapping("/login")
-    public Result<AuthTokens> login(@RequestBody @Validated LoginReq req) {
+    public Result<AuthTokens> login(@RequestBody @Validated LoginReq req,
+                                    jakarta.servlet.http.HttpServletResponse response) {
         loginGuard.checkLocked(req.username());
         AdminUser user = userMapper.selectOne(
                 new LambdaQueryWrapper<AdminUser>().eq(AdminUser::getUsername, req.username()));
@@ -51,24 +56,39 @@ public class AuthController {
         loginGuard.clear(req.username());
         user.setLastLoginAt(LocalDateTime.now());
         userMapper.updateById(user);
+        String accessToken = jwtUtil.issueAccessToken(user.getId(), user.getUsername(), user.getRole());
+        // HttpOnly cookie：JS 不可读，XSS 无法窃取；24h 有效期（SameSite=Lax 防 CSRF）
+        jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie(COOKIE_NAME, accessToken);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(COOKIE_MAX_AGE);
+        response.addCookie(cookie);
+        // 响应体仍返回 user 信息供前端渲染；token 字段留空（前端不再持久化）
         return Result.ok(new AuthTokens(
-                jwtUtil.issueAccessToken(user.getId(), user.getUsername(), user.getRole()),
-                jwtUtil.issueRefreshToken(user.getId(), user.getUsername(), user.getRole()),
+                "",
+                "",
                 new AuthTokens.UserDTO(user.getId(), user.getUsername(), user.getRole())));
     }
 
-    public record RefreshReq(@NotBlank String refreshToken) {}
+    /** 登出：清 cookie */
+    @PostMapping("/logout")
+    public Result<Void> logout(jakarta.servlet.http.HttpServletResponse response) {
+        jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie(COOKIE_NAME, "");
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+        return Result.ok(null);
+    }
 
-    @PostMapping("/refresh")
-    public Result<AuthTokens> refresh(@RequestBody @Validated RefreshReq req) {
-        Claims claims = jwtUtil.parse(req.refreshToken());
-        if (claims == null) throw new BizException(4013, "refreshToken 无效或已过期");
-        AdminUser user = userMapper.selectById(Long.valueOf(claims.getSubject()));
-        if (user == null) throw new BizException(4013, "用户不存在");
-        return Result.ok(new AuthTokens(
-                jwtUtil.issueAccessToken(user.getId(), user.getUsername(), user.getRole()),
-                req.refreshToken(),
-                new AuthTokens.UserDTO(user.getId(), user.getUsername(), user.getRole())));
+    /** 恢复会话：cookie 有效时返回当前用户（前端刷新后调用） */
+    @GetMapping("/me")
+    public Result<AuthTokens.UserDTO> me(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal String subject) {
+        if (subject == null) throw new BizException(4010, "未登录");
+        AdminUser user = userMapper.selectById(Long.valueOf(subject));
+        if (user == null) throw new BizException(4010, "未登录");
+        return Result.ok(new AuthTokens.UserDTO(user.getId(), user.getUsername(), user.getRole()));
     }
 
     /** 修改密码：需登录态，旧密码校验 + 新密码强度检查（安全加固 2026-09-21） */
@@ -79,7 +99,8 @@ public class AuthController {
     @PostMapping("/change-password")
     public Result<Void> changePassword(@RequestBody @Validated ChangePasswordReq req,
                                        @org.springframework.security.core.annotation.AuthenticationPrincipal
-                                       String subject) {
+                                       String subject,
+                                       jakarta.servlet.http.HttpServletResponse response) {
         if (req.newPassword().length() < 8) {
             throw new BizException(4014, "新密码至少 8 位");
         }
@@ -92,6 +113,12 @@ public class AuthController {
         }
         user.setPasswordHash(encoder.encode(req.newPassword()));
         userMapper.updateById(user);
+        // 改密后作废当前 cookie（强制重新登录）
+        jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie(COOKIE_NAME, "");
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
         return Result.ok(null);
     }
 }

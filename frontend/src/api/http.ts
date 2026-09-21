@@ -2,14 +2,8 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import type { Result } from '../types/api';
 
-// 统一 axios 实例：token 注入 + 业务错误统一抛出
-export const http = axios.create({ baseURL: '/api', timeout: 15000 });
-
-http.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+// 统一 axios 实例：cookie 会话由浏览器自动携带（2026-09-21 去 Authorization 注入）
+export const http = axios.create({ baseURL: '/api', timeout: 15000, withCredentials: true });
 
 http.interceptors.response.use(
   (resp) => {
