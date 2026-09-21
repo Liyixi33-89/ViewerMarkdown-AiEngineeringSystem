@@ -1,19 +1,18 @@
-.admin-layout { height: 100%; display: flex; flex-direction: column; }
-.admin-topbar {
-  height: 56px; flex: none;
-  display: flex; align-items: center; gap: 12px;
-  padding: 0 16px;
-  background: #001529; color: rgba(255,255,255,.85);
-}
-.admin-topbar .logo { color: #fff; font-weight: 700; font-size: 16px; }
-.admin-topbar .spacer { flex: 1; }
-.admin-main { flex: 1; min-height: 0; display: flex; }
-.admin-sidebar {
-  width: 300px; flex: none;
-  border-right: 1px solid var(--border);
-  background: var(--bg-soft);
-  display: flex; flex-direction: column; min-height: 0;
-}
-.admin-sidebar .tree-wrap { flex: 1; overflow: auto; min-height: 0; padding: 8px; }
-.admin-workbench { flex: 1; min-width: 0; overflow: auto; padding: 16px 24px; }
+/* AntD v5 cssinjs 运行时注入会压过外部 CSS：
+   布局关键样式一律内联在 AdminLayout.tsx 上，本文件只留静态选择器样式 */
+.admin-layout { height: 100%; }
+.admin-topbar-logo { color: #fff; font-weight: 700; font-size: 16px; }
+
+/* 工作区空态（DocsPage） */
 .workbench-empty { color: var(--text-soft); text-align: center; margin-top: 120px; }
+
+/* 后台 Markdown 源码编辑框（DocsPage / UploadPage 共用） */
+.admin-editor {
+  width: 100%; min-height: 420px;
+  padding: 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--code-bg);
+  font-family: Consolas, monospace; font-size: 13px; line-height: 1.6;
+  outline: none; resize: vertical;
+}
+.admin-editor:focus { border-color: var(--primary); }

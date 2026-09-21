@@ -1,0 +1,9 @@
+/* 文档管理页双栏：依赖外层 .admin-content--flat 的 flex 行布局 */
+.docs-sidebar {
+  width: 300px; flex: none;
+  border-right: 1px solid var(--border);
+  background: var(--bg-soft);
+  display: flex; flex-direction: column; min-height: 0;
+}
+.docs-sidebar .tree-wrap { flex: 1; overflow: auto; min-height: 0; padding: 8px; }
+.docs-workbench { flex: 1; min-width: 0; overflow: auto; padding: 16px 24px; }

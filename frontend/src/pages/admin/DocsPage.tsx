@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Button, Card, Modal, Space, Tabs, Typography, message } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
 import { DocTree } from '../../components/DocTree/DocTree';
 import { MarkdownViewer } from '../../components/markdown/MarkdownViewer';
-import { UploadDialog } from '../../components/UploadDialog';
 import { NameDialog } from '../../components/NameDialog';
 import { adminApi } from '../../api/adminApi';
 import { useDocTreeStore, type TreeItem } from '../../stores/docTreeStore';
-import './Dashboard.css';
+import './DocsPage.css';
 
 type NodeAction = 'rename' | 'delete' | 'newFolder' | 'newDoc';
 // 命名弹窗意图：newFolderRoot=根建夹 newDocRoot=根建文档 newFolder/newDoc=树内子节点 rename=重命名
@@ -18,11 +16,10 @@ type NameIntent =
   | { kind: 'newDoc'; node: TreeItem }
   | { kind: 'rename'; node: TreeItem };
 
-// 管理工作台：左侧管理树（CRUD）+ 右侧预览/编辑工作区（M1）
-export default function Dashboard() {
+// 文档管理页：左侧管理树（CRUD）+ 右侧预览/编辑工作区（原 Dashboard 迁移）
+export default function DocsPage() {
   const { load, select, selectedId } = useDocTreeStore();
 
-  const [uploadOpen, setUploadOpen] = useState(false);
   const [nameIntent, setNameIntent] = useState<NameIntent | null>(null);
   const [nameSubmitting, setNameSubmitting] = useState(false);
   const [activeDoc, setActiveDoc] = useState<{ id: number; name: string; content: string } | null>(
@@ -137,23 +134,16 @@ export default function Dashboard() {
 
   return (
     <>
-      <aside className="admin-sidebar">
+      <aside className="docs-sidebar">
         <Space style={{ padding: 8 }}>
-          <Button type="primary" icon={<UploadOutlined />} onClick={() => setUploadOpen(true)}>
-            上传
-          </Button>
-          <Button onClick={() => setNameIntent({ kind: 'newDocRoot' })}>
-            新建文档
-          </Button>
-          <Button onClick={() => setNameIntent({ kind: 'newFolderRoot' })}>
-            新建文件夹
-          </Button>
+          <Button onClick={() => setNameIntent({ kind: 'newDocRoot' })}>新建文档</Button>
+          <Button onClick={() => setNameIntent({ kind: 'newFolderRoot' })}>新建文件夹</Button>
         </Space>
         <div className="tree-wrap">
           <DocTree readonly={false} selectedId={selectedId} onSelect={onTreeSelect} onAction={onAction} />
         </div>
       </aside>
-      <section className="admin-workbench">
+      <section className="docs-workbench">
         {!activeDoc && <div className="workbench-empty">在左侧选择一篇文档进行管理</div>}
         {activeDoc && (
           <Card
@@ -204,13 +194,6 @@ export default function Dashboard() {
           </Card>
         )}
       </section>
-      <UploadDialog
-        open={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        onUploaded={async () => {
-          await load();
-        }}
-      />
       <NameDialog
         open={nameIntent !== null}
         title={

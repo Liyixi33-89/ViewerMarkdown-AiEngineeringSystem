@@ -1,9 +1,0 @@
-.admin-editor {
-  width: 100%; min-height: 420px;
-  padding: 12px;
-  border: 1px solid var(--border); border-radius: 8px;
-  background: var(--code-bg);
-  font-family: Consolas, monospace; font-size: 13px; line-height: 1.6;
-  outline: none; resize: vertical;
-}
-.admin-editor:focus { border-color: var(--primary); }

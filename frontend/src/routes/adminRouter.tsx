@@ -6,7 +6,10 @@ import { useAuthStore } from '../stores/authStore';
 
 // 后台路由树（懒加载，antd 仅进 admin chunk）
 const Login = lazy(() => import('../pages/admin/Login'));
-const Dashboard = lazy(() => import('../pages/admin/Dashboard'));
+const Overview = lazy(() => import('../pages/admin/Overview'));
+const DocsPage = lazy(() => import('../pages/admin/DocsPage'));
+const UploadPage = lazy(() => import('../pages/admin/UploadPage'));
+const PasswordPage = lazy(() => import('../pages/admin/PasswordPage'));
 
 // 已登录访问 /admin/login 时跳工作台
 function RedirectIfAuthed({ children }: { children: JSX.Element }) {
@@ -26,7 +29,12 @@ const adminRouter = createBrowserRouter([
         <AdminLayout />
       </RequireAuth>
     ),
-    children: [{ index: true, element: <Dashboard /> }],
+    children: [
+      { index: true, element: <Overview /> },
+      { path: 'docs', element: <DocsPage /> },
+      { path: 'upload', element: <UploadPage /> },
+      { path: 'password', element: <PasswordPage /> },
+    ],
   },
   {
     path: '/admin/login',
