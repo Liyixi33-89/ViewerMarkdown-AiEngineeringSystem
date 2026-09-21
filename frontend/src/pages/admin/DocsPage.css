@@ -7,3 +7,5 @@
 }
 .docs-sidebar .tree-wrap { flex: 1; overflow: auto; min-height: 0; padding: 8px; }
 .docs-workbench { flex: 1; min-width: 0; overflow: auto; padding: 16px 24px; }
+.docs-toolbar { padding: 8px; }
+.doc-source-embedded { margin: 0; }

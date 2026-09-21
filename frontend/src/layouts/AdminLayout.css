@@ -2,6 +2,8 @@
    布局关键样式一律内联在 AdminLayout.tsx 上，本文件只留静态选择器样式 */
 .admin-layout { height: 100%; }
 .admin-topbar-logo { color: #fff; font-weight: 700; font-size: 16px; }
+/* 顶栏文字元素无 AntD 同元素样式竞争，可走外部 CSS；
+   Header/Content/Sider 等 AntD 组件仍需内联对抗 cssinjs（见 AdminLayout.tsx） */
 
 /* 工作区空态（DocsPage） */
 .workbench-empty { color: var(--text-soft); text-align: center; margin-top: 120px; }

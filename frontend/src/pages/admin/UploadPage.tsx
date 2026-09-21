@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Card, Input, Select, Space, Tabs, Typography, Upload, message } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
 import { adminApi } from '../../api/adminApi';
 import { useDocTreeStore } from '../../stores/docTreeStore';
+import './UploadPage.css';
 
 // 上传入库页：批量 .md 文件 / 粘贴文本（PRD 4.4，从 Dashboard 弹窗迁出为独立路由页）
 export default function UploadPage() {
@@ -13,7 +14,9 @@ export default function UploadPage() {
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [result, setResult] = useState<string[]>([]);
+  /** 已入库记录：{ seq 序号（稳定 key）, text 展示行 } */
+  const [result, setResult] = useState<{ seq: number; text: string }[]>([]);
+  const seqRef = useRef(0);
 
   useEffect(() => {
     void load();
@@ -25,6 +28,9 @@ export default function UploadPage() {
     void import('../../components/markdown/MarkdownViewer').then((m) => setViewer(() => m.MarkdownViewer));
   }, []);
 
+  const appendResult = (lines: string[]) =>
+    setResult((r) => [...lines.map((text) => ({ seq: seqRef.current++, text })), ...r]);
+
   const submitFiles = async (files: File[]) => {
     const valid = files.filter((f) => /\.(md|markdown)$/i.test(f.name));
     if (valid.length !== files.length) {
@@ -35,7 +41,7 @@ export default function UploadPage() {
     try {
       const results = await adminApi.uploadFiles(valid, parentId);
       message.success(`成功上传 ${results.length} 个文档`);
-      setResult((r) => [...results.map((x) => `📄 ${x.finalName}`), ...r]);
+      appendResult(results.map((x) => `📄 ${x.finalName}`));
       await load();
     } catch (e) {
       message.error(e instanceof Error ? e.message : '上传失败');
@@ -53,7 +59,7 @@ export default function UploadPage() {
     try {
       const res = await adminApi.uploadText(title.trim(), text, parentId);
       message.success(`已保存：${res.finalName}`);
-      setResult((r) => [`📄 ${res.finalName}`, ...r]);
+      appendResult([`📄 ${res.finalName}`]);
       setTitle('');
       setText('');
       await load();
@@ -68,14 +74,14 @@ export default function UploadPage() {
     <Select
       value={parentId}
       onChange={setParentId}
-      style={{ width: '100%' }}
+      className="upload-parent-select"
       options={[{ value: 0, label: '根目录' }, ...folders.map((f) => ({ value: f.id, label: f.name }))]}
     />
   );
 
   return (
-    <div>
-      <Typography.Title level={4} style={{ marginTop: 0 }}>
+    <div className="upload-page">
+      <Typography.Title level={4} className="page-title">
         上传入库
       </Typography.Title>
       <Card>
@@ -86,7 +92,7 @@ export default function UploadPage() {
               label: '文件上传',
               children: (
                 <div>
-                  <p style={{ color: 'var(--text-soft)', fontSize: 12 }}>目标目录</p>
+                  <p className="upload-hint">目标目录</p>
                   {parentSelect}
                   <Upload.Dragger
                     multiple
@@ -94,7 +100,7 @@ export default function UploadPage() {
                     showUploadList={false}
                     customRequest={({ file }) => void submitFiles([file as unknown as File])}
                     disabled={uploading}
-                    style={{ marginTop: 12 }}
+                    className="upload-dragger"
                   >
                     <p className="ant-upload-drag-icon"><InboxOutlined /></p>
                     <p className="ant-upload-text">点击或拖入 .md 文件（支持多选）</p>
@@ -107,7 +113,7 @@ export default function UploadPage() {
               key: 'text',
               label: '粘贴文本',
               children: (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
+                <div className="upload-text-pane">
                   <Input
                     placeholder="文档标题（默认取首个 # 标题）"
                     value={title}
@@ -115,14 +121,13 @@ export default function UploadPage() {
                   />
                   {parentSelect}
                   <textarea
-                    className="admin-editor"
-                    style={{ minHeight: 200 }}
+                    className="admin-editor upload-text-editor"
                     placeholder="粘贴 Markdown 文本…"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                   />
                   {text.trim() && Viewer && (
-                    <div style={{ maxHeight: 260, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
+                    <div className="upload-text-preview">
                       <Viewer content={text} />
                     </div>
                   )}
@@ -146,10 +151,10 @@ export default function UploadPage() {
         />
       </Card>
       {result.length > 0 && (
-        <Card size="small" title="本次会话已入库" style={{ marginTop: 16 }}>
+        <Card size="small" title="本次会话已入库" className="upload-result-card">
           {result.map((line) => (
-            <Typography.Text key={line + Math.random()} style={{ display: 'block', fontSize: 12 }}>
-              {line}
+            <Typography.Text key={line.seq} className="upload-result-line">
+              {line.text}
             </Typography.Text>
           ))}
         </Card>

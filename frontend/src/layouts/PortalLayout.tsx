@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { DocTree } from '../components/DocTree/DocTree';
 import { SearchBox } from '../components/SearchBox';
@@ -7,6 +7,7 @@ import { useViewerPrefs } from '../stores/viewerPrefsStore';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { usePolling } from '../hooks/usePolling';
 import { isMobileQuery } from '../utils/breakpoints';
+import { ScrollerContext } from '../contexts/ScrollerContext';
 import './PortalLayout.css';
 
 // 前台门户壳：顶栏 + 只读树 + 内容区；桌面三栏 / 移动全屏抽屉
@@ -14,6 +15,7 @@ export default function PortalLayout() {
   const navigate = useNavigate();
   const isMobile = useMediaQuery(isMobileQuery);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const contentRef = useRef<HTMLElement>(null);
 
   const { load, select, selectedId } = useDocTreeStore();
   const theme = useViewerPrefs((s) => s.theme);
@@ -127,8 +129,10 @@ export default function PortalLayout() {
             »
           </button>
         )}
-        <main className="portal-content" id="portal-content">
-          <Outlet />
+        <main className="portal-content" ref={contentRef}>
+          <ScrollerContext.Provider value={contentRef}>
+            <Outlet />
+          </ScrollerContext.Provider>
         </main>
       </div>
     </div>

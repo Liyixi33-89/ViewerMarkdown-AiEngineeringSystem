@@ -1,0 +1,6 @@
+/* 概览页样式（从内联 style 迁出） */
+.page-title { margin-top: 0; }
+.stat-icon-doc { color: var(--primary); }
+.stat-icon-folder { color: #faad14; }
+.stat-icon-total { color: #52c41a; }
+.overview-tip-card { margin-top: 16px; }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Form, Input, Typography, message } from 'antd';
 import { adminApi } from '../../api/adminApi';
 import { useAuthStore } from '../../stores/authStore';
+import './PasswordPage.css';
 
 // 改密码独立路由页：旧密码校验 + ≥8 位 + 改完强制重登（2026-09-21 从顶栏 Modal 迁出）
 export default function PasswordPage() {
@@ -26,8 +27,8 @@ export default function PasswordPage() {
   };
 
   return (
-    <div style={{ maxWidth: 480 }}>
-      <Typography.Title level={4} style={{ marginTop: 0 }}>
+    <div className="password-page">
+      <Typography.Title level={4} className="page-title">
         修改密码
       </Typography.Title>
       <Card>

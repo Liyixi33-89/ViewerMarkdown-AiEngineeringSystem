@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Card, Col, Row, Statistic, Typography } from 'antd';
 import { FileTextOutlined, FolderOutlined } from '@ant-design/icons';
 import { useDocTreeStore } from '../../stores/docTreeStore';
+import './Overview.css';
 
 // 概览页：文档统计 + 快捷说明
 export default function Overview() {
@@ -16,7 +17,7 @@ export default function Overview() {
 
   return (
     <div>
-      <Typography.Title level={4} style={{ marginTop: 0 }}>
+      <Typography.Title level={4} className="page-title">
         概览
       </Typography.Title>
       <Row gutter={16}>
@@ -25,7 +26,7 @@ export default function Overview() {
             <Statistic
               title="文档总数"
               value={docs.length}
-              prefix={<FileTextOutlined style={{ color: 'var(--primary)' }} />}
+              prefix={<FileTextOutlined className="stat-icon stat-icon-doc" />}
             />
           </Card>
         </Col>
@@ -34,7 +35,7 @@ export default function Overview() {
             <Statistic
               title="文件夹总数"
               value={folders.length}
-              prefix={<FolderOutlined style={{ color: '#faad14' }} />}
+              prefix={<FolderOutlined className="stat-icon stat-icon-folder" />}
             />
           </Card>
         </Col>
@@ -43,12 +44,12 @@ export default function Overview() {
             <Statistic
               title="节点总数"
               value={nodes.length}
-              prefix={<FileTextOutlined style={{ color: '#52c41a' }} />}
+              prefix={<FileTextOutlined className="stat-icon stat-icon-total" />}
             />
           </Card>
         </Col>
       </Row>
-      <Card style={{ marginTop: 16 }} size="small">
+      <Card size="small" className="overview-tip-card">
         <Typography.Text type="secondary">
           左侧导航：文档管理（树形 CRUD + 内容编辑）、上传入库（批量 .md 文件 / 粘贴文本）。
           前台改动约 10 秒内自动同步。

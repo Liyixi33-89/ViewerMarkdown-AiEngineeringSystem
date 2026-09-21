@@ -4,6 +4,7 @@ import { MarkdownViewer } from '../../components/markdown/MarkdownViewer';
 import { portalApi } from '../../api/portalApi';
 import { useDocTreeStore } from '../../stores/docTreeStore';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
+import { useScroller } from '../../contexts/ScrollerContext';
 import type { DocContent } from '../../types/api';
 import './DocView.css';
 
@@ -47,8 +48,10 @@ export default function DocView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodesVersion]);
 
-  useScrollMemory(Number.isFinite(docId) ? docId : null, () =>
-    document.getElementById('portal-content'),
+  const scrollerRef = useScroller();
+  useScrollMemory(
+    Number.isFinite(docId) ? docId : null,
+    () => scrollerRef?.current ?? null,
   );
 
   useEffect(() => {

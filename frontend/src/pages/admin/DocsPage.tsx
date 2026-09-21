@@ -135,7 +135,7 @@ export default function DocsPage() {
   return (
     <>
       <aside className="docs-sidebar">
-        <Space style={{ padding: 8 }}>
+        <Space className="docs-toolbar">
           <Button onClick={() => setNameIntent({ kind: 'newDocRoot' })}>新建文档</Button>
           <Button onClick={() => setNameIntent({ kind: 'newFolderRoot' })}>新建文件夹</Button>
         </Space>
@@ -184,7 +184,7 @@ export default function DocsPage() {
                       />
                     </Typography.Paragraph>
                   ) : (
-                    <pre className="doc-source" style={{ margin: 0 }}>
+                    <pre className="doc-source doc-source-embedded">
                       {activeDoc.content}
                     </pre>
                   ),

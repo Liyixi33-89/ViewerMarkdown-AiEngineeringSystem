@@ -1,0 +1,14 @@
+/* 上传入库页样式（从内联 style 迁出） */
+.upload-page { max-width: 960px; }
+.page-title { margin-top: 0; }
+.upload-parent-select { width: 100%; }
+.upload-hint { color: var(--text-soft); font-size: 12px; }
+.upload-dragger { margin-top: 12px; }
+.upload-text-pane { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+.upload-text-editor { min-height: 200px; }
+.upload-text-preview {
+  max-height: 260px; overflow: auto;
+  border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+}
+.upload-result-card { margin-top: 16px; }
+.upload-result-line { display: block; font-size: 12px; }

@@ -35,7 +35,7 @@ export default function AdminLayout() {
           lineHeight: '56px',
         }}
       >
-        <span className="admin-topbar-logo" style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>
+        <span className="admin-topbar-logo">
           🛠 MD Viewer 管理中心
         </span>
         <div style={{ flex: 1 }} />

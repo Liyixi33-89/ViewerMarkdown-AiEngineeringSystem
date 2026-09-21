@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { portalApi } from '../api/portalApi';
 import { debounce } from '../utils/debounce';
+import { useClickOutside } from '../hooks/useClickOutside';
 import type { SearchHit } from '../types/api';
 import './SearchBox.css';
 
@@ -32,13 +33,8 @@ export function SearchBox({ onSelect }: { onSelect: (id: number) => void }) {
   }, [keyword, doSearch]);
 
   // 点击外部关闭
-  useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('click', onDocClick);
-    return () => document.removeEventListener('click', onDocClick);
-  }, []);
+  const closeDropdown = useRef(() => setOpen(false)).current;
+  useClickOutside(boxRef, closeDropdown);
 
   return (
     <div className="search-box" ref={boxRef}>
