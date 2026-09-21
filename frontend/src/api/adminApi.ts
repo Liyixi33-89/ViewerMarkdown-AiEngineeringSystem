@@ -7,6 +7,10 @@ export const adminApi = {
   login: (username: string, password: string) =>
     post<AuthTokens>('/admin/auth/login', { username, password }),
 
+  /** 修改密码（安全加固 2026-09-21） */
+  changePassword: (oldPassword: string, newPassword: string) =>
+    post<void>('/admin/auth/change-password', { oldPassword, newPassword }),
+
   // ---- 管理树 ----
   getTree: () => get<TreeNode[]>('/admin/tree'),
 
