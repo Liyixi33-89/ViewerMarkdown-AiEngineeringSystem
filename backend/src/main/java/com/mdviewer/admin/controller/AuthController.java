@@ -8,6 +8,7 @@ import com.mdviewer.common.Result;
 import com.mdviewer.domain.entity.AdminUser;
 import com.mdviewer.domain.mapper.AdminUserMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import io.jsonwebtoken.Claims;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.validation.annotation.Validated;
@@ -81,14 +82,28 @@ public class AuthController {
         return Result.ok(null);
     }
 
-    /** 恢复会话：cookie 有效时返回当前用户（前端刷新后调用） */
+    /** 恢复会话：cookie 有效时返回当前用户（前端刷新后调用）。
+     *  注意：白名单放行后 principal 是 "anonymousUser"，必须自己解析 cookie（已踩坑 500） */
     @GetMapping("/me")
-    public Result<AuthTokens.UserDTO> me(
-            @org.springframework.security.core.annotation.AuthenticationPrincipal String subject) {
+    public Result<AuthTokens.UserDTO> me(jakarta.servlet.http.HttpServletRequest request) {
+        String subject = resolveSubjectFromCookie(request);
         if (subject == null) throw new BizException(4010, "未登录");
         AdminUser user = userMapper.selectById(Long.valueOf(subject));
         if (user == null) throw new BizException(4010, "未登录");
         return Result.ok(new AuthTokens.UserDTO(user.getId(), user.getUsername(), user.getRole()));
+    }
+
+    /** 从请求 cookie 中解析 JWT subject；无效/缺失返回 null */
+    private String resolveSubjectFromCookie(jakarta.servlet.http.HttpServletRequest request) {
+        jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+        if (cookies == null) return null;
+        for (jakarta.servlet.http.Cookie c : cookies) {
+            if (COOKIE_NAME.equals(c.getName())) {
+                Claims claims = jwtUtil.parse(c.getValue());
+                return claims == null ? null : claims.getSubject();
+            }
+        }
+        return null;
     }
 
     /** 修改密码：需登录态，旧密码校验 + 新密码强度检查（安全加固 2026-09-21） */
