@@ -34,7 +34,7 @@ mdviewer:
   jwt:
     # 生产环境请通过环境变量覆盖：MDVIEWER_JWT_SECRET
     secret: ${MDVIEWER_JWT_SECRET:dev-only-secret-change-me-in-production-0123456789}
-    access-token-hours: 2
+    access-token-hours: 24   # 2026-09-22 对齐 cookie 会话 24h（原 2h 为双 token 时代残留，导致登录 2h 后过期）
     refresh-token-days: 7
   init:
     admin-username: admin
