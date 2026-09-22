@@ -147,8 +147,16 @@ public class NodeService {
         for (Long id : currentIds) {
             if (!idSet.contains(id)) throw new BizException(4001, "排序列表缺少现有子节点");
         }
-        for (Long id : orderedIds) {
-            if (!currentIds.contains(id)) throw new BizException(4041, "节点 " + id + " 不在目标目录下");
+        // 跨目录拖入：允许外来节点出现在列表中（限 1 个），但必须真实存在且不在目标子树内
+        List<Long> foreignIds = orderedIds.stream().filter(id -> !currentIds.contains(id)).toList();
+        if (foreignIds.size() > 1) {
+            throw new BizException(4001, "一次只能拖入一个外部节点");
+        }
+        for (Long fid : foreignIds) {
+            DocNode foreign = mustExist(fid); // 不存在抛 4041
+            if (foreign.getParentId().equals(target.getId())) {
+                throw new BizException(4001, "节点已在目标目录下");
+            }
         }
 
         // 先处理跨目录移入（环检测 + 层级校验复用 move 逻辑），再统一编号
