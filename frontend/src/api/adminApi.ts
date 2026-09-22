@@ -29,8 +29,13 @@ export const adminApi = {
   saveContent: (id: number, content: string, name?: string) =>
     put<void>(`/admin/nodes/${id}/content`, { content, name }),
 
-  move: (id: number, targetParentId: number, sortOrder: number) =>
+  /** 移动/排序：sortOrder 省略时后端自动追加到目标目录末尾 */
+  move: (id: number, targetParentId: number, sortOrder?: number) =>
     put<void>(`/admin/nodes/${id}/move`, { targetParentId, sortOrder }),
+
+  /** 批量重排：orderedIds 为目标目录下重排后的完整子节点序列（支持拖入外部节点） */
+  reorder: (parentId: number, orderedIds: number[]) =>
+    put<void>('/admin/nodes/order', { parentId, orderedIds }),
 
   remove: (id: number) => del<void>(`/admin/nodes/${id}`),
 

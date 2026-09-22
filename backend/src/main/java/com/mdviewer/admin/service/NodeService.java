@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 管理树核心服务：CRUD、移动排序（环检测 + 层级校验）、软删除（技术设计文档 3.4）。
@@ -121,6 +122,48 @@ public class NodeService {
             if (child.getId().equals(node.getId())) continue;
             child.setPath(child.getPath().replaceFirst(java.util.regex.Pattern.quote(oldPathPrefix), node.getPath()));
             nodeMapper.updateById(child);
+        }
+        versionRegistry.bump();
+    }
+
+    /**
+     * 批量重排：orderedIds 为目标父目录下重排后的完整子节点序列。
+     * 支持把其他目录的节点拖入（复用 move 的环检测/层级校验），同目录则纯排序。
+     */
+    @Transactional
+    public void reorder(Long parentId, List<Long> orderedIds) {
+        DocNode target = validateParent(parentId);
+
+        Set<Long> idSet = new java.util.HashSet<>(orderedIds);
+        if (idSet.size() != orderedIds.size()) {
+            throw new BizException(4001, "排序列表存在重复节点");
+        }
+
+        // 校验列表完整性：目标目录现有子节点必须全部包含在内
+        List<DocNode> currentChildren = nodeMapper.selectList(new LambdaQueryWrapper<DocNode>()
+                .eq(DocNode::getParentId, target.getId()));
+        Set<Long> currentIds = currentChildren.stream().map(DocNode::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        for (Long id : currentIds) {
+            if (!idSet.contains(id)) throw new BizException(4001, "排序列表缺少现有子节点");
+        }
+        for (Long id : orderedIds) {
+            if (!currentIds.contains(id)) throw new BizException(4041, "节点 " + id + " 不在目标目录下");
+        }
+
+        // 先处理跨目录移入（环检测 + 层级校验复用 move 逻辑），再统一编号
+        for (Long id : orderedIds) {
+            DocNode node = mustExist(id);
+            if (!node.getParentId().equals(target.getId())) {
+                move(id, target.getId(), null);
+            }
+        }
+
+        // 按 orderedIds 顺序重写 sortOrder：1..n（文件夹/文档混合保持列表顺序）
+        for (int i = 0; i < orderedIds.size(); i++) {
+            DocNode node = nodeMapper.selectById(orderedIds.get(i));
+            node.setSortOrder(i + 1);
+            nodeMapper.updateById(node);
         }
         versionRegistry.bump();
     }

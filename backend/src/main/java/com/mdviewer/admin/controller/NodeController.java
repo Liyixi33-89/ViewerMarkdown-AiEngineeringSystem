@@ -7,6 +7,7 @@ import com.mdviewer.common.Result;
 import com.mdviewer.domain.entity.DocNode;
 import com.mdviewer.sync.VersionRegistry;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -93,6 +94,15 @@ public class NodeController {
     @PutMapping("/nodes/{id}/move")
     public Result<Void> move(@PathVariable Long id, @RequestBody @Validated MoveReq req) {
         nodeService.move(id, req.targetParentId(), req.sortOrder());
+        return Result.ok();
+    }
+
+    /** 批量排序请求：orderedIds 为同一父目录下重排后的完整子节点 id 序列 */
+    public record ReorderReq(@NotNull Long parentId, @NotEmpty List<Long> orderedIds) {}
+
+    @PutMapping("/nodes/order")
+    public Result<Void> reorder(@RequestBody @Validated ReorderReq req) {
+        nodeService.reorder(req.parentId(), req.orderedIds());
         return Result.ok();
     }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button, Card, Modal, Space, Tabs, Typography, message } from 'antd';
-import { DocTree } from '../../components/DocTree/DocTree';
+import { DocTree, type DropPosition } from '../../components/DocTree/DocTree';
 import { MarkdownViewer } from '../../components/markdown/MarkdownViewer';
 import { NameDialog } from '../../components/NameDialog';
 import { adminApi } from '../../api/adminApi';
@@ -54,6 +54,47 @@ export default function DocsPage() {
   }, [selectedId]);
 
   const onTreeSelect = (id: number) => select(id);
+
+  // 拖拽落定：统一走 reorder（同目录排序 / 跨目录拖入），失败刷新回滚
+  const onMove = async (dragNode: TreeItem, targetNode: TreeItem, position: DropPosition) => {
+    const nodes = useDocTreeStore.getState().nodes;
+    // inside=移入目标文件夹（追加末尾）；before/after=插到目标同级指定位置
+    const parentId = position === 'inside' ? targetNode.id : targetNode.parentId;
+    const parent = nodes.find((n) => n.id === parentId);
+    const dragFrom = dragNode.parentId;
+    const insertIdx = position === 'before' ? -1 : 1;
+
+    // 构造目标目录重排后的完整 id 序列（含原目录兄弟节点，跨目录则目标侧追加 dragNode）
+    const targetSiblings = (parent ? nodes.filter((n) => n.parentId === parentId) : nodes.filter((n) => n.parentId === 0))
+      .filter((n) => n.id !== dragNode.id)
+      .sort((a, b) => {
+        if (a.type !== b.type) return a.type === 'FOLDER' ? -1 : 1;
+        if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+        return a.name.localeCompare(b.name, 'zh-CN');
+      })
+      .map((n) => n.id);
+
+    let orderedIds: number[];
+    if (position === 'inside') {
+      orderedIds = [...targetSiblings, dragNode.id];
+    } else {
+      const idx = targetSiblings.indexOf(targetNode.id);
+      orderedIds = [
+        ...targetSiblings.slice(0, idx + (insertIdx === -1 ? 0 : 1)),
+        dragNode.id,
+        ...targetSiblings.slice(idx + (insertIdx === -1 ? 0 : 1)),
+      ];
+    }
+
+    try {
+      await adminApi.reorder(parentId, orderedIds);
+      message.success(position === 'inside' && dragFrom !== parentId ? `已移入「${targetNode.name}」` : '已保存排序');
+      await load();
+    } catch (e) {
+      message.error(e instanceof Error ? e.message : '移动失败');
+      await load(); // 失败回滚视图
+    }
+  };
 
   const onAction = async (action: NodeAction, node: TreeItem) => {
     try {
@@ -140,7 +181,7 @@ export default function DocsPage() {
           <Button onClick={() => setNameIntent({ kind: 'newFolderRoot' })}>新建文件夹</Button>
         </Space>
         <div className="tree-wrap">
-          <DocTree readonly={false} selectedId={selectedId} onSelect={onTreeSelect} onAction={onAction} />
+          <DocTree readonly={false} selectedId={selectedId} onSelect={onTreeSelect} onAction={onAction} onMove={onMove} />
         </div>
       </aside>
       <section className="docs-workbench">

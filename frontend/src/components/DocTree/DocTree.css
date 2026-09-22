@@ -37,6 +37,13 @@
 }
 .tree-node .node-actions button:hover { color: var(--primary); background: var(--bg-soft); }
 
+/* 拖拽落点反馈：before/after 用边框线标示插入位置，inside 用背景高亮表示"移入此文件夹" */
+.tree-node.drop-before { box-shadow: inset 0 2px 0 0 var(--primary); }
+.tree-node.drop-after { box-shadow: inset 0 -2px 0 0 var(--primary); }
+.tree-node.drop-inside { background: var(--primary-soft); outline: 1px dashed var(--primary); }
+.tree-node[draggable='true'] { cursor: grab; }
+.tree-node[draggable='true']:active { cursor: grabbing; }
+
 /* 树内筛选输入 */
 .tree-filter {
   margin: 4px 10px 8px;
