@@ -83,6 +83,31 @@ description: Linux 服务器部署前端静态资源 + Spring Boot 的坑位清�
     - 改密接口真实路径是 `POST /admin/auth/change-password`（带 oldPassword + cookie），
       记错路径会得到误导性的 500 NoResourceFoundException
 
+12. **新接口上线后旧 jar 兜底 500：路由变量误匹配（2026-09-22 事故）**
+    - 症状：本地前端调 `PUT /api/admin/nodes/order` 返回 500 `{"code":5000,"msg":"服务内部错误"}`，
+      后端代码明明已写好该接口
+    - 根因：**运行中的后端是改动前启动的旧 jar**。新路由 `/nodes/order` 不存在于旧代码，
+      被 `@PutMapping("/nodes/{id}/move")` 的路径变量当成 `id="order"`，`"order"` 转 Long 失败
+      → 全局异常处理器兜底 500（而非预期的 404）
+    - 判定手法：`Get-CimInstance Win32_Process -Filter "ProcessId=<pid>"` 查进程启动时间，
+      与代码提交时间对比；启动时间早于代码改动 = 跑的是旧版
+    - 铁律：**新增接口后必须重启后端进程再联调**；报 500 先查「进程是不是旧的」再查代码。
+      Windows 下 jar 被运行进程锁定，`mvn package` 会报 `Unable to rename ... .jar.original`——
+      先 Stop-Process 再打包
+    - 后台启动用 `Start-Process -WindowStyle Hidden`（重定向 stdout 到日志文件）；
+      `execute_command` 的 background 模式会随 shell 退出被杀，端口起不来别急着怪代码
+
+13. **树操作接口的校验矩阵陷阱：完整性校验 vs 跨目录拖入（2026-09-22，fa360bc）**
+    - 症状：拖拽排序接口报 4041「节点 32 不在目标目录下」，但跨目录拖入本应是支持的功能
+    - 根因：reorder 的「列表完整性校验」（目标目录现有子节点必须全在 orderedIds 里）
+      写反了方向——把**合法的外来拖入节点**也要求「已在目标目录下」，自相矛盾
+    - 教训：涉及「校验集合」的接口设计，先列全场景矩阵再写校验：
+      同目录纯排序 / 跨目录拖入（外来节点 1 个）/ 拖入缺失现有节点（拒绝）/ 幂等重放（放行）
+    - 修复模式：外来节点放行但限 1 个且须 mustExist；环检测/层级校验继续复用 move 兜底
+    - **同名缺口同日补齐**：跨目录 move 时目标目录已有同名 → uniqueName 自动加 `(n)`；
+      创建/重命名/上传原有去重，唯独 move 漏了——「同一去重规则要覆盖所有变更 parentId 的入口」
+
+
 ## 部署快捷序列（复用模板）
 
 ```bash
@@ -102,8 +127,24 @@ ssh root@IP "chmod -R a+rX /opt/mdviewer/frontend && systemctl restart md-viewer
 要同步什么？            → 手段
 ─────────────────────────────────────────────────────
 文档内容的新增/修改      → admin API（upload_doc.py --target prod）
+线上文档拉回本地         → portal API 拉全文 + 本地 admin API 创建（双向都走 API）
 前端静态资源            → scp dist + chmod（见部署序列）
 后端 jar               → scp + systemctl restart
 整库初始化/架构迁移      → 停机窗口整库搬迁（先备份线上库！）
                        → mv /opt/mdviewer/data/md_viewer.mv.db{,.bak}
+```
+
+## 后端 jar 发布序列（2026-09-22 固化，全程不碰 data/）
+
+```bash
+# 1. 打包前先停本地后端（Windows jar 锁）
+Stop-Process -Id <本地8090进程PID> -Force
+mvn package -q -DskipTests
+# 2. 上传为临时名 → 核对字节数一致 → 原子替换（旧 jar 自动保留 .bak）
+scp target/md-viewer-server-*.jar root@IP:/opt/mdviewer/md-viewer-server.jar.new
+ssh root@IP "ls -l /opt/mdviewer/md-viewer-server.jar.new"   # 对照本地字节数
+ssh root@IP "mv /opt/mdviewer/md-viewer-server.jar.new /opt/mdviewer/md-viewer-server.jar \
+             && systemctl restart md-viewer && sleep 12 && systemctl is-active md-viewer \
+             && curl -s http://127.0.0.1:8090/api/portal/version | head -c 60"
+# 3. 公网验证：登录 → 幂等重放新接口（原样重放现有顺序，零副作用验证路由通）
 ```

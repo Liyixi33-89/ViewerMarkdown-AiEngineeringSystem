@@ -110,8 +110,13 @@ public class NodeService {
         }
 
         String oldPathPrefix = node.getPath();
+        Long oldParentId = node.getParentId();
         node.setParentId(target.getId());
         node.setSortOrder(sortOrder != null ? sortOrder : nextSort(target.getId()));
+        // 跨目录移动：目标目录内同名去重（同目录纯排序不触发）
+        if (!oldParentId.equals(target.getId())) {
+            node.setName(uniqueName(target.getId(), node.getName(), node.getId()));
+        }
         node.setPath(target.getPath() + node.getId() + "/");
         nodeMapper.updateById(node);
 
