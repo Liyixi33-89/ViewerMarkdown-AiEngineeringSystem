@@ -93,8 +93,8 @@ $declaredDirs = @(
 foreach ($d in $declaredDirs) {
     if (-not (Test-Path "$root/$d")) { Write-Bad "文档防腐: 声明的目录缺失 $d" }
 }
-foreach ($skill in @("add-portal-page", "add-admin-api", "verify-workflow")) {
-    if (-not (Test-Path "$root/.agent/skills/$skill/SKILL.md")) { Write-Bad "文档防腐: skill 缺失 $skill" }
+foreach ($skillDir in (Get-ChildItem "$root/.agent/skills" -Directory | Where-Object { $_.Name -ne "_template" })) {
+    if (-not (Test-Path "$($skillDir.FullName)/SKILL.md")) { Write-Bad "文档防腐: skill 缺失 SKILL.md $($skillDir.Name)" }
 }
 $specDirs = Get-ChildItem "$root/.agent/specs" -Directory | Where-Object { $_.Name -ne "_template" }
 foreach ($sd in $specDirs) {

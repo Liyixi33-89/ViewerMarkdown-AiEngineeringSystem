@@ -18,7 +18,7 @@
 | 前端 UI | 后台用 Ant Design 5（仅 admin chunk）；前台自研样式，禁止引入 AntD |
 | Markdown | react-markdown + remark-gfm + rehype-sanitize + react-syntax-highlighter |
 | 后端 | Java 17 + Spring Boot 3.2 + MyBatis-Plus + MySQL 8 |
-| 认证 | JWT（AccessToken 2h / RefreshToken 7d） |
+| 认证 | JWT 装载 HttpOnly cookie（会话 24h；2026-09-21 从双 token 迁移） |
 | API 契约 | REST，统一响应 `{ code, msg, data }`；OpenAPI 由 SpringDoc 生成 |
 
 ## 3. 仓库结构与目录职责

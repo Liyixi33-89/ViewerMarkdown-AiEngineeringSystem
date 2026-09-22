@@ -16,6 +16,13 @@ FAILED=0
 STARTED=$(date +%s)
 FAIL_ITEMS=()
 
+# Windows 下经 WSL bash 跑时 JAVA_HOME 常缺失；但 Windows JDK 只有 bin/java.exe，
+# mvn 的 shell 脚本硬性检查 bin/java —— 结构性不兼容，后端验证交由 verify.ps1（本地）与 CI（Linux JDK）
+if [[ -z "${JAVA_HOME:-}" && -d /mnt/c/Program\ Files/Eclipse\ Adoptium ]]; then
+  JDK_DIR="$(ls -d /mnt/c/Program\ Files/Eclipse\ Adoptium/jdk-* 2>/dev/null | sort -V | tail -1)"
+  [[ -n "$JDK_DIR" ]] && export JAVA_HOME="$JDK_DIR"
+fi
+
 step() { printf '\n==> %s\n' "$1"; }
 ok()   { printf '    [PASS] %s\n' "$1"; }
 bad()  { printf '    [FAIL] %s\n' "$1"; FAILED=$((FAILED+1)); FAIL_ITEMS+=("$1"); }
@@ -39,9 +46,13 @@ else
 fi
 
 # ---------- 后端 ----------
+# WSL bash + Windows JDK 时 mvn 的 bin/java 检查结构性失败（Windows JDK 只有 java.exe），
+# 此时后端验证交由 verify.ps1（本地 Windows）与 CI（Linux JDK）执行，此处明确降级跳过
 if [[ -f "$ROOT/backend/pom.xml" ]]; then
   if ! command -v mvn >/dev/null 2>&1; then
     printf '    [SKIP] 未找到 mvn（后端验证跳过）\n'
+  elif [[ -n "${JAVA_HOME:-}" && ! -x "$JAVA_HOME/bin/java" && -x "$JAVA_HOME/bin/java.exe" ]]; then
+    printf '    [SKIP] WSL + Windows JDK：后端验证由 verify.ps1 / CI 负责\n'
   else
     step "后端 mvn compile"
     (cd "$ROOT/backend" && mvn -q compile >/dev/null 2>&1) \
@@ -78,8 +89,10 @@ declare -a DECLARED=(
 for d in "${DECLARED[@]}"; do
   [[ -d "$ROOT/$d" ]] || bad "文档防腐: AGENTS.md 声明的目录缺失 $d"
 done
-for s in add-portal-page add-admin-api verify-workflow; do
-  [[ -f "$ROOT/.agent/skills/$s/SKILL.md" ]] || bad "文档防腐: skill 缺失 $s"
+for s in "$ROOT"/.agent/skills/*/; do
+  name="$(basename "$s")"
+  [[ "$name" == "_template" ]] && continue
+  [[ -f "$s/SKILL.md" ]] || bad "文档防腐: skill 缺失 SKILL.md $name"
 done
 for specdir in "$ROOT/.agent/specs"/*/; do
   name="$(basename "$specdir")"

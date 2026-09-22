@@ -3,9 +3,9 @@
 | 项 | 值 |
 | --- | --- |
 | spec_id | SPEC-M1-00 |
-| status | active |
+| status | done（2026-09-22 结项；后续迭代直接开新 spec） |
 | owner | @team |
-| created_at / last_verified_at | 2026-09-20 / 2026-09-20 |
+| created_at / last_verified_at | 2026-09-20 / 2026-09-22 |
 | 关联文档 | PRD 全文（M1 范围）、技术设计文档第 2/3/5 章 |
 
 ## 1. 目标
@@ -15,7 +15,8 @@
 ## 2. 范围
 
 - 涉及模块：前端全部、后端 portal/admin 模块、`sql/init.sql`
-- 明确不做（M2+）：编辑模式分屏、拖拽排序、回收站页、全文检索、TOC、公式、Mermaid、WebSocket
+- 明确不做（M1 阶段不做，后续迭代按新 spec 立项）：编辑模式分屏、回收站页、全文检索、TOC、公式、Mermaid、WebSocket
+- 备注：「拖拽排序」原列为 M1 不做项，已于 2026-09-22 作为独立迭代交付（PUT /admin/nodes/order）
 
 ## 3. 契约
 

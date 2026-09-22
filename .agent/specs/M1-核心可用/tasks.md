@@ -25,7 +25,7 @@
 
 ## 后端接口
 - [x] portal：/tree、/docs/{id}/content、/search、/version
-- [x] admin auth：login（BCrypt + JWT 签发）、refresh
+- [x] admin auth：login（BCrypt + JWT 签发）、refresh（2026-09-21 已随 cookie 会话方案移除，登录走 Set-Cookie 24h）
 - [x] admin nodes：文件夹/文档 CRUD、移动排序（环检测 + 层级校验）、软删除
 - [x] admin upload：文件解析入库（UTF-8 校验、重名追加后缀）、粘贴文本入库
 - [x] VersionRegistry 写操作 bump
