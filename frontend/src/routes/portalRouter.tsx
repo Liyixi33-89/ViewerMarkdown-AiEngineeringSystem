@@ -1,11 +1,11 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router-dom';
 import PortalLayout from '../layouts/PortalLayout';
+import { reloadOnChunkError } from './adminRouter';
 
 // 前台路由树（公开，不含 antd chunk）
-const DocView = lazy(() => import('../pages/portal/DocView'));
-const Home = lazy(() => import('../pages/portal/Home'));
-
+const DocView = lazy(() => reloadOnChunkError(import('../pages/portal/DocView')));
+const Home = lazy(() => reloadOnChunkError(import('../pages/portal/Home')));
 const portalRouter = createBrowserRouter([
   {
     path: '/',
