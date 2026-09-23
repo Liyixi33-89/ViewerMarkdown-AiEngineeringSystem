@@ -8,7 +8,19 @@
 /* 工作区空态（DocsPage） */
 .workbench-empty { color: var(--text-soft); text-align: center; margin-top: 120px; }
 
-/* 后台 Markdown 源码编辑框（DocsPage / UploadPage 共用） */
+/* 后台 Markdown 源码编辑框（DocsPage 编辑态：@uiw/react-textarea-code-editor） */
+.admin-code-editor {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--code-bg);
+  font-size: 13px;
+  line-height: 1.6;
+  --code-editor-background: var(--code-bg);
+}
+.admin-code-editor:focus-within { border-color: var(--primary); }
+
+/* 后台 Markdown 源码编辑框（UploadPage 粘贴文本仍用原生 textarea） */
 .admin-editor {
   width: 100%; min-height: 420px;
   padding: 12px;

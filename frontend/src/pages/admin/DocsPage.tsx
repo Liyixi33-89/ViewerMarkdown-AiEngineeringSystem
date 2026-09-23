@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Modal, Space, Tabs, Typography, message } from 'antd';
+import { Button, Card, Modal, Space, Tabs, message } from 'antd';
+import CodeEditor from '@uiw/react-textarea-code-editor';
 import { DocTree, type DropPosition } from '../../components/DocTree/DocTree';
 import { MarkdownViewer } from '../../components/markdown/MarkdownViewer';
 import { NameDialog } from '../../components/NameDialog';
@@ -217,13 +218,13 @@ export default function DocsPage() {
                   key: 'source',
                   label: editing ? '编辑源码' : '源码',
                   children: editing ? (
-                    <Typography.Paragraph>
-                      <textarea
-                        className="admin-editor"
-                        value={draftContent}
-                        onChange={(e) => setDraftContent(e.target.value)}
-                      />
-                    </Typography.Paragraph>
+                    <CodeEditor
+                      className="admin-code-editor"
+                      language="markdown"
+                      value={draftContent}
+                      minHeight={420}
+                      onChange={(e) => setDraftContent(e.target.value)}
+                    />
                   ) : (
                     <pre className="doc-source doc-source-embedded">
                       {activeDoc.content}
