@@ -1,6 +1,39 @@
 import { del, get, post, put } from './http';
 import type { AuthTokens, TreeNode } from '../types/api';
 
+// 回收站条目（isRoot=false 的条目是整树删除的内部节点，仅用于计数）
+export interface RecycleItem {
+  id: number;
+  parentId: number;
+  name: string;
+  type: 'FOLDER' | 'DOC';
+  path: string;
+  deletedAt?: string;
+  isRoot: boolean;
+}
+
+// 整库导出格式（名称路径定位，与自增 id 解耦）
+export interface ExportItem {
+  namePath: string;
+  folder: boolean;
+  sortOrder: number;
+  status: number;
+  content?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface ExportPayload {
+  version: string;
+  exportedAt: number;
+  items: ExportItem[];
+}
+
+export interface ImportStats {
+  created: number;
+  updated: number;
+  skipped: number;
+}
+
 // 后台管理接口（JWT 鉴权）
 export const adminApi = {
   // ---- 认证 ----
@@ -38,6 +71,18 @@ export const adminApi = {
     put<void>('/admin/nodes/order', { parentId, orderedIds }),
 
   remove: (id: number) => del<void>(`/admin/nodes/${id}`),
+
+  // ---- 回收站 ----
+  getRecycle: () => get<RecycleItem[]>('/admin/recycle'),
+
+  restore: (id: number) => put<{ id: number; parentId: number }>(`/admin/recycle/${id}/restore`),
+
+  purge: (id: number) => del<void>(`/admin/recycle/${id}`),
+
+  // ---- 导出 / 导入 ----
+  exportAll: () => get<ExportPayload>('/admin/export'),
+
+  importAll: (payload: ExportPayload) => post<ImportStats>('/admin/import', payload),
 
   // ---- 上传 ----
   /** 上传 .md 文件（多文件），返回 [{fileName, id, finalName}] */

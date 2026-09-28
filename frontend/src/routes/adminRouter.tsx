@@ -24,6 +24,8 @@ const Login = lazy(() => reloadOnChunkError(import('../pages/admin/Login')));
 const Overview = lazy(() => reloadOnChunkError(import('../pages/admin/Overview')));
 const DocsPage = lazy(() => reloadOnChunkError(import('../pages/admin/DocsPage')));
 const UploadPage = lazy(() => reloadOnChunkError(import('../pages/admin/UploadPage')));
+const RecyclePage = lazy(() => reloadOnChunkError(import('../pages/admin/RecyclePage')));
+const SyncPage = lazy(() => reloadOnChunkError(import('../pages/admin/SyncPage')));
 const PasswordPage = lazy(() => reloadOnChunkError(import('../pages/admin/PasswordPage')));
 
 // 已登录访问 /admin/login 时跳工作台（cookie 会话：authed 标记）
@@ -48,6 +50,8 @@ const adminRouter = createBrowserRouter([
       { index: true, element: <Overview /> },
       { path: 'docs', element: <DocsPage /> },
       { path: 'upload', element: <UploadPage /> },
+      { path: 'recycle', element: <RecyclePage /> },
+      { path: 'sync', element: <SyncPage /> },
       { path: 'password', element: <PasswordPage /> },
     ],
   },

@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -191,6 +192,80 @@ public class NodeService {
         if (affected == 0) throw new BizException(4041, "节点不存在");
         versionRegistry.bump();
     }
+
+    /**
+     * 回收站列表（全部软删除节点，含子树内部节点——前端按 path 前缀折叠展示为顶层条目）。
+     * 需要显式 SQL：MP @TableLogic 会给所有查询自动追加 deleted=0。
+     */
+    public List<RecycleItem> listRecycle() {
+        List<DocNode> deleted = nodeMapper.selectDeleted();
+        Set<Long> deletedIds = deleted.stream().map(DocNode::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        return deleted.stream().map(n -> new RecycleItem(
+                        n.getId(), n.getParentId(), n.getName(),
+                        n.isFolder() ? "FOLDER" : "DOC",
+                        n.getPath(),
+                        n.getDeletedAt() == null ? null : n.getDeletedAt().toString(),
+                        // 根条目 = 父节点不在回收站中（整树删除的直接触发节点）
+                        !deletedIds.contains(n.getParentId())))
+                .toList();
+    }
+
+    /** 恢复：整棵子树回到原父目录。若原父目录已不存在/已删除，回落到根目录并改名防撞。 */
+    @Transactional
+    public Map<String, Object> restore(Long id) {
+        List<DocNode> deleted = nodeMapper.selectDeleted();
+        Map<Long, DocNode> byId = deleted.stream()
+                .collect(java.util.stream.Collectors.toMap(DocNode::getId, n -> n));
+        DocNode node = byId.get(id);
+        if (node == null) throw new BizException(4041, "回收站中不存在该节点");
+        if (!isRootEntry(byId, node)) {
+            throw new BizException(4001, "请恢复顶层条目（其子节点随整树恢复）");
+        }
+
+        // 原父目录是否仍在树上（未删除）
+        boolean parentAlive = node.getParentId() != null && node.getParentId() > 0
+                && nodeMapper.selectById(node.getParentId()) != null;
+
+        // 仅恢复同一删除批次（deleted_at 一致）：先独立删除的子孙不随本批次复活
+        nodeMapper.restoreSubtree(node.getPath(), node.getId(), node.getDeletedAt());
+
+        if (!parentAlive) {
+            // 父目录已删/不存在：挂回根目录并整体改名防撞
+            node.setDeleted(0); // 使后续 MP 查询可见（实体内存态）
+            move(id, 0L, null);
+        } else {
+            // 父目录仍在：仅处理与现存兄弟同名冲突（子树内部无需动）
+            node.setDeleted(0);
+            node.setName(uniqueName(node.getParentId(), node.getName(), node.getId()));
+            nodeMapper.updateById(node);
+        }
+        versionRegistry.bump();
+        return Map.of("id", id, "parentId", parentAlive ? node.getParentId() : 0L);
+    }
+
+    /** 彻底删除（物理删除，不可恢复） */
+    @Transactional
+    public void purge(Long id) {
+        List<DocNode> deleted = nodeMapper.selectDeleted();
+        Map<Long, DocNode> byId = deleted.stream()
+                .collect(java.util.stream.Collectors.toMap(DocNode::getId, n -> n));
+        DocNode node = byId.get(id);
+        if (node == null) throw new BizException(4041, "回收站中不存在该节点");
+        if (!isRootEntry(byId, node)) {
+            throw new BizException(4001, "请从顶层条目彻底删除（其子节点随整树清除）");
+        }
+        nodeMapper.purgeSubtree(node.getPath(), node.getId());
+        versionRegistry.bump();
+    }
+
+    private boolean isRootEntry(Map<Long, DocNode> byId, DocNode node) {
+        return !byId.containsKey(node.getParentId());
+    }
+
+    /** 回收站条目 DTO（isRoot 标记供前端折叠展示整树删除的顶层条目） */
+    public record RecycleItem(Long id, Long parentId, String name, String type,
+                              String path, String deletedAt, boolean isRoot) {}
 
     // ---------- 内部工具 ----------
 

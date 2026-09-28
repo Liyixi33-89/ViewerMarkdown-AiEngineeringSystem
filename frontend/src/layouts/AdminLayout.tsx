@@ -1,6 +1,6 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Layout, Menu, Space, Typography } from 'antd';
-import { FileTextOutlined, LockOutlined, LogoutOutlined, UploadOutlined, DashboardOutlined } from '@ant-design/icons';
+import { FileTextOutlined, LockOutlined, LogoutOutlined, UploadOutlined, DashboardOutlined, RestOutlined, CloudSyncOutlined } from '@ant-design/icons';
 import { message } from 'antd';
 import { adminApi } from '../api/adminApi';
 import { useAuthStore } from '../stores/authStore';
@@ -13,6 +13,8 @@ const NAV_ITEMS = [
   { key: '/admin', icon: <DashboardOutlined />, label: '概览' },
   { key: '/admin/docs', icon: <FileTextOutlined />, label: '文档管理' },
   { key: '/admin/upload', icon: <UploadOutlined />, label: '上传入库' },
+  { key: '/admin/recycle', icon: <RestOutlined />, label: '回收站' },
+  { key: '/admin/sync', icon: <CloudSyncOutlined />, label: '导出/导入' },
   { key: '/admin/password', icon: <LockOutlined />, label: '改密码' },
 ];
 

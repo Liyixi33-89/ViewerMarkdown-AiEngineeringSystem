@@ -2,6 +2,7 @@ package com.mdviewer.admin.controller;
 
 import com.mdviewer.admin.dto.AuthTokens;
 import com.mdviewer.admin.service.NodeService;
+import com.mdviewer.admin.service.SyncService;
 import com.mdviewer.admin.service.UploadService;
 import com.mdviewer.common.Result;
 import com.mdviewer.domain.entity.DocNode;
@@ -25,6 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.List;
 import java.util.Map;
 
@@ -35,12 +38,14 @@ import java.util.Map;
 public class NodeController {
     private final NodeService nodeService;
     private final UploadService uploadService;
+    private final SyncService syncService;
     private final VersionRegistry versionRegistry;
 
     public NodeController(NodeService nodeService, UploadService uploadService,
-                          VersionRegistry versionRegistry) {
+                          SyncService syncService, VersionRegistry versionRegistry) {
         this.nodeService = nodeService;
         this.uploadService = uploadService;
+        this.syncService = syncService;
         this.versionRegistry = versionRegistry;
     }
 
@@ -110,6 +115,58 @@ public class NodeController {
     public Result<Void> remove(@PathVariable Long id) {
         nodeService.softDelete(id);
         return Result.ok();
+    }
+
+    // ---------- 回收站 ----------
+
+    @GetMapping("/recycle")
+    public Result<List<NodeService.RecycleItem>> recycle() {
+        return Result.ok(nodeService.listRecycle());
+    }
+
+    @PutMapping("/recycle/{id}/restore")
+    public Result<Map<String, Object>> restore(@PathVariable Long id) {
+        return Result.ok(nodeService.restore(id));
+    }
+
+    @DeleteMapping("/recycle/{id}")
+    public Result<Void> purge(@PathVariable Long id) {
+        nodeService.purge(id);
+        return Result.ok();
+    }
+
+    // ---------- 导出 / 导入（双库同步） ----------
+
+    @GetMapping("/export")
+    public Result<SyncService.ExportPayload> exportAll() {
+        return Result.ok(syncService.exportAll());
+    }
+
+    /**
+     * 导入：body 为导出 JSON。手动读 body 字符串而非 @RequestBody 反序列化，
+     * 以兼容带 UTF-8 BOM 的文件（Windows 记事本 / PowerShell Out-File 默认带 BOM，
+     * Jackson 遇 BOM 直接解析失败，2026-09-28 实测踩坑）。
+     * 未知字段容错：用户可能误传完整接口响应（含 code/msg/data 包装），给出明确报错而非 500。
+     */
+    @PostMapping("/import")
+    public Result<SyncService.ImportStats> importAll(HttpServletRequest request) throws java.io.IOException {
+        String body = request.getReader().lines()
+                .collect(java.util.stream.Collectors.joining("\n"));
+        if (body != null && !body.isEmpty() && body.charAt(0) == '\uFEFF') {
+            body = body.substring(1); // 去 BOM
+        }
+        com.fasterxml.jackson.databind.ObjectMapper mapper =
+                new com.fasterxml.jackson.databind.ObjectMapper()
+                        .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        SyncService.ExportPayload payload = mapper.readValue(body, SyncService.ExportPayload.class);
+        // 误传完整响应时取 data 字段（items 在 data 里）
+        if (payload.items() == null && body.contains("\"data\"")) {
+            var root = mapper.readTree(body);
+            if (root.has("data")) {
+                payload = mapper.treeToValue(root.get("data"), SyncService.ExportPayload.class);
+            }
+        }
+        return Result.ok(syncService.importAll(payload));
     }
 
     // ---------- 上传 ----------
