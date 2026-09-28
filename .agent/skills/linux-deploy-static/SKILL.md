@@ -119,6 +119,37 @@ description: Linux 服务器部署前端静态资源 + Spring Boot 的坑位清�
     - 安装 cron 用 `install-cron.sh` 幂等追加，**保留腾讯云 stargate 原有条目**，别直接覆盖 crontab
     - 恢复：停服务 → `zcat 备份 > data/md_viewer.mv.db` → 启动（同坑位 7 的停机顺序）
 
+16. **Jackson 遇 UTF-8 BOM 直接解析失败（2026-09-28 导出导入）**
+    - 症状：`POST /admin/import` 报 4001「导入数据为空」；body 其实是合法 JSON
+    - 根因：Windows 记事本 / PowerShell 5.1 `Out-File -Encoding utf8` 保存的文件**默认带 BOM**（EF BB BF），
+      Jackson `readValue` 遇 BOM 抛 `JsonParseException` → items 为 null
+    - 修复：导入接口手动 `request.getReader()` 读字符串，`charAt(0)=='\uFEFF'` 时 substring(1) 去 BOM 再反序列化
+    - 加固：`FAIL_ON_UNKNOWN_PROPERTIES=false` + 误传完整接口响应（含 code/msg/data 包装）时自动解 `data` 字段，
+      给用户明确报错而非 500
+
+17. **PowerShell 5.1 Invoke-RestMethod 无 charset 响应按 Latin-1 解码 → mojibake 数据污染（2026-09-28）**
+    - 症状：API 返回的中文正常显示为「??????」，写库后永乱码；或导出 JSON 回传变成
+      `Ã¤Â½Â¿Ã§Â¨Ã¦Â`（UTF-8 被按 Latin-1 双重编码）
+    - 根因：PS 5.1 的 Invoke-RestMethod 对无 charset 头的 JSON 按 ISO-8859-1 解码；
+      再经 `-Body` 回传时二次编码，后端收到的是乱码字节
+    - 铁律：**验证含中文的 API 链路一律用 `[System.Net.Http.HttpClient]` + `GetByteArrayAsync` +
+      `[Text.Encoding]::UTF8.GetString()` 字节直传**，绝不走 Invoke-RestMethod 的字符串快捷路径
+    - 事故代价：本地库被灌 41 个 mojibake 节点，靠「parentId 在新建 id 集合外」判根 + 软删 + purge 清干净
+
+18. **回收站恢复必须按删除批次过滤（2026-09-28 单测发现的设计缺陷）**
+    - 场景：先删子文档 C（批次1），再删父目录 A 连带 B（批次2）；恢复 A 时
+      path 前缀匹配会把批次1 的 C 一并复活——用户已删两次的东西自己回来了
+    - 修复：`softDeleteSubtree` 全树写同一个 `deleted_at`；`restoreSubtree` 加 `AND deleted_at = #{deletedAt}`
+      只恢复同批次节点；单测 `restoreDoesNotReviveIndependentlyDeletedDescendant` 锁死该行为
+    - 教训：**软删除「全树一个时间戳」不只是审计信息，是恢复语义的一部分**；
+      设计回收站时先写「删除批次」的状态机再写 SQL
+
+19. **「导入目标库」与「源库」同库测试幂等要先清空（2026-09-28 测试设计）**
+    - 幂等导入的集成测试里，导出后直接重放会因为「节点本来就在树上」而全 skipped，
+      验证不了跨库重建路径
+    - 正确姿势：导出 → `jdbc.update("DELETE FROM doc_node")` 清空 → 导入（应全量 created）→
+      再导入（应全量 skipped）两段断言，才是完整的幂等证明
+
 ## 部署快捷序列（复用模板）
 
 ```bash
