@@ -106,7 +106,18 @@ description: Linux 服务器部署前端静态资源 + Spring Boot 的坑位清�
     - 修复模式：外来节点放行但限 1 个且须 mustExist；环检测/层级校验继续复用 move 兜底
     - **同名缺口同日补齐**：跨目录 move 时目标目录已有同名 → uniqueName 自动加 `(n)`；
       创建/重命名/上传原有去重，唯独 move 漏了——「同一去重规则要覆盖所有变更 parentId 的入口」
+14. **H2 的 LIKE 区分大小写，MySQL 默认不区分（2026-09-28 全文搜索）**
+    - 症状：搜 `Fiber` 命中 2 条，搜 `fiber`/`FIBER` 命中 0~1 条；本地 H2 与计划中的 MySQL 行为不一致
+    - 修复：`apply("LOWER(col) LIKE {0} ESCAPE '!'", "%" + escapeLike(kw.toLowerCase()) + "%")`，
+      `{0}` 占位符保证预编译；转义符用 `!`（反斜杠在 MySQL 字符串里还要二次转义，易错）
+    - 用户输入的 `%` `_` 必须转义，否则 `_` 会匹配任意字符（本次搜 `_` 前后命中数差异可见）
 
+15. **H2 在线备份（2026-09-28 落地）**
+    - 脚本 `deploy/backup/mdv-backup.sh` → 线上 `/opt/mdviewer/bin/`，cron `30 3 * * *`，
+      保留 7 天，产物 `/opt/mdviewer/backup/md_viewer-*.mv.db.gz`（600 权限）
+    - 校验：大小一致 + 文件头 `H:2`；结果写 `journalctl -t mdv-backup`
+    - 安装 cron 用 `install-cron.sh` 幂等追加，**保留腾讯云 stargate 原有条目**，别直接覆盖 crontab
+    - 恢复：停服务 → `zcat 备份 > data/md_viewer.mv.db` → 启动（同坑位 7 的停机顺序）
 
 ## 部署快捷序列（复用模板）
 

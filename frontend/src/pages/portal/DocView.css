@@ -1,3 +1,8 @@
+/* 有 TOC 时桌面宽屏为右侧固定大纲让出空间（TocPanel 宽 220 + 右距 16） */
+@media (min-width: 1280px) {
+  .doc-view.has-toc { padding-right: 240px; }
+}
+
 .doc-loading, .doc-error {
   max-width: var(--content-width); margin: 80px auto; text-align: center;
   color: var(--text-soft);

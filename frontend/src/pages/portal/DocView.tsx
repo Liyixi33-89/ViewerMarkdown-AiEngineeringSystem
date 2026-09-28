@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MarkdownViewer } from '../../components/markdown/MarkdownViewer';
+import { TocPanel } from '../../components/markdown/TocPanel';
 import { portalApi } from '../../api/portalApi';
 import { useDocTreeStore } from '../../stores/docTreeStore';
 import { useScrollMemory } from '../../hooks/useScrollMemory';
 import { useScroller } from '../../contexts/ScrollerContext';
+import { extractToc } from '../../utils/toc';
 import type { DocContent } from '../../types/api';
 import './DocView.css';
 
 type ViewMode = 'preview' | 'source';
 
-// 文档回显页：面包屑 + 预览/源码切换 + 渲染正文（PRD 3.5）
+// 文档回显页：面包屑 + 预览/源码切换 + 渲染正文 + 右侧 TOC（PRD 3.5）
 export default function DocView() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -22,7 +24,7 @@ export default function DocView() {
 
   const select = useDocTreeStore((s) => s.select);
   const nodesVersion = useDocTreeStore((s) => s.nodes); // 轮询刷新树后触发重载（文档被删/更新）
-  const contentRef = useRef<HTMLDivElement>(null);
+  const headingRegistry = useRef(new Map<string, HTMLElement>());
 
   const loadDoc = useCallback(async () => {
     if (!Number.isFinite(docId)) return;
@@ -62,8 +64,11 @@ export default function DocView() {
     }
   }, [error, navigate]);
 
+  const toc = useMemo(() => (doc ? extractToc(doc.content) : []), [doc]);
+  const showToc = mode === 'preview' && toc.length >= 2;
+
   return (
-    <div ref={contentRef}>
+    <div className={`doc-view${showToc ? ' has-toc' : ''}`}>
       {error && <div className="doc-error">⚠️ {error}，即将返回首页…</div>}
       {!error && !doc && <div className="doc-loading">加载中…</div>}
       {doc && (
@@ -98,9 +103,17 @@ export default function DocView() {
             </div>
           </div>
           {mode === 'preview' ? (
-            <MarkdownViewer content={doc.content} />
+            <MarkdownViewer content={doc.content} headingRegistry={headingRegistry} />
           ) : (
             <pre className="doc-source">{doc.content}</pre>
+          )}
+          {showToc && (
+            <TocPanel
+              key={doc.id}
+              items={toc}
+              registry={headingRegistry}
+              scroller={scrollerRef?.current ?? null}
+            />
           )}
         </>
       )}

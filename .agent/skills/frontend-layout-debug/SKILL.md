@@ -40,6 +40,10 @@ description: 前台布局类「组件不显示」问题的排查路径。适用�
 
 - **persist 恢复的布尔状态会跨会话锁死 UI**：设计折叠/隐藏类功能时必须先问
   「恢复入口在哪」。入口在被隐藏元素内 = 死锁。
+- **首选无头 Chrome `--dump-dom` 读渲染后 DOM**（2026-09-28 TOC 验证）：
+  `chrome --headless=new --user-data-dir=%TEMP%\mdv-hl --virtual-time-budget=8000 --dump-dom URL`，
+  再用 Python 正则断言 class/id/数量——比截图 + 图像识别稳定（图像工具可能不可用）。
+  必须带独立 `--user-data-dir`，否则与已打开的 Chrome 冲突，截图/输出静默为空。
 - **Console 截图 OCR 不可靠**：多行 JSON/长字符串会被大模型幻觉污染。
   调试输出一律渲染到页面 DOM（白色背景大字标签或调试页），再截图读取。
 - **`querySelector` 返回 Element 类型没有 offsetWidth**：调试页 TS 会报错，

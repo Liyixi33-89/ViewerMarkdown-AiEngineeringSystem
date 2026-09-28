@@ -27,7 +27,8 @@ export interface SearchHit {
   id: number;
   name: string;
   path: string;
-  snippet?: string;
+  snippet?: string | null;
+  matchType?: 'NAME' | 'CONTENT';
 }
 
 export interface AuthTokens {

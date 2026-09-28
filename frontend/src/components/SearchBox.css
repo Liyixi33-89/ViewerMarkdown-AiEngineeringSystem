@@ -27,3 +27,12 @@
 .search-item:hover { background: var(--bg-soft); }
 .search-item-name { color: var(--text); font-size: 14px; }
 .search-item-path { color: var(--text-soft); font-size: 12px; }
+.search-item-tag {
+  margin-left: 6px; padding: 0 5px; border-radius: 4px;
+  font-size: 11px; color: var(--text-soft); border: 1px solid var(--border);
+}
+.search-item-snippet {
+  color: var(--text-soft); font-size: 12px; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.search-item .hl { background: rgba(250, 204, 21, .35); color: inherit; border-radius: 2px; padding: 0 1px; }

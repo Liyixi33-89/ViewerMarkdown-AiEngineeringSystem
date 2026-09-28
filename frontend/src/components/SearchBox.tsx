@@ -3,6 +3,7 @@ import { portalApi } from '../api/portalApi';
 import { debounce } from '../utils/debounce';
 import { useClickOutside } from '../hooks/useClickOutside';
 import type { SearchHit } from '../types/api';
+import { Highlight } from './Highlight';
 import './SearchBox.css';
 
 // 顶栏搜索：防抖 300ms 即时下拉（技术设计文档 2.5）
@@ -67,7 +68,15 @@ export function SearchBox({ onSelect }: { onSelect: (id: number) => void }) {
                 setOpen(false);
               }}
             >
-              <span className="search-item-name">📄 {h.name}</span>
+              <span className="search-item-name">
+                📄 <Highlight text={h.name} keyword={keyword} />
+                {h.matchType === 'CONTENT' && <span className="search-item-tag">正文</span>}
+              </span>
+              {h.snippet && (
+                <span className="search-item-snippet">
+                  <Highlight text={h.snippet} keyword={keyword} />
+                </span>
+              )}
               <span className="search-item-path">{h.path}</span>
             </button>
           ))}

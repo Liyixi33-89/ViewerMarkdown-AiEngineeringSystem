@@ -65,12 +65,17 @@ public class PortalService {
 
     public List<SearchHitDTO> search(String keyword) {
         if (keyword == null || keyword.isBlank()) return List.of();
+        String kw = keyword.trim();
         // 仅返回文档节点：文件夹不可回显，出现在搜索结果中会产生 4041 导航失败（PRD 3.6）
+        // 全文搜索：标题或正文命中；标题命中优先排序
+        // 大小写不敏感：H2 的 LIKE 区分大小写（MySQL 默认排序规则不区分），统一 LOWER 后比较；
+        // 参数走 {0} 占位符预编译，LIKE 通配符 %/_ 转义后按字面匹配
+        String pattern = "%" + escapeLike(kw.toLowerCase()) + "%";
         List<DocNode> nodes = nodeMapper.selectList(
                 new LambdaQueryWrapper<DocNode>()
                         .eq(DocNode::getStatus, DocNode.STATUS_PUBLISHED)
                         .eq(DocNode::getType, DocNode.TYPE_DOC)
-                        .like(DocNode::getName, keyword.trim())
+                        .apply("(LOWER(name) LIKE {0} ESCAPE '!' OR LOWER(content) LIKE {0} ESCAPE '!')", pattern)
                         .last("LIMIT 50"));
         // 面包屑路径文本
         Map<Long, DocNode> all = nodeMapper.selectList(
@@ -78,10 +83,43 @@ public class PortalService {
                                 .eq(DocNode::getStatus, DocNode.STATUS_PUBLISHED)
                                 .select(DocNode::getId, DocNode::getParentId, DocNode::getName))
                 .stream().collect(Collectors.toMap(DocNode::getId, n -> n));
+        String lowerKw = kw.toLowerCase();
         return nodes.stream()
-                .sorted(Comparator.comparing(DocNode::getName))
-                .map(n -> new SearchHitDTO(n.getId(), n.getName(), pathText(n, all)))
+                .map(n -> {
+                    boolean nameHit = n.getName().toLowerCase().contains(lowerKw);
+                    return new SearchHitDTO(n.getId(), n.getName(), pathText(n, all),
+                            snippet(n.getContent(), lowerKw), nameHit ? "NAME" : "CONTENT");
+                })
+                .sorted(Comparator.comparing((SearchHitDTO h) -> "NAME".equals(h.getMatchType()) ? 0 : 1)
+                        .thenComparing(SearchHitDTO::getName))
                 .collect(Collectors.toList());
+    }
+
+    /** 转义 LIKE 通配符（转义符 !，H2/MySQL 通用），使用户输入的 % _ ! 按字面匹配 */
+    static String escapeLike(String s) {
+        return s.replace("!", "!!").replace("%", "!%").replace("_", "!_");
+    }
+
+    /** 片段窗口：命中点前后各取若干字符 */
+    private static final int SNIPPET_BEFORE = 30;
+    private static final int SNIPPET_AFTER = 60;
+
+    /**
+     * 提取正文命中片段：压缩空白并去掉常见 Markdown 标记后，截取首个命中点附近文本。
+     * 未命中正文返回 null（前端只展示路径）。
+     */
+    static String snippet(String content, String lowerKw) {
+        if (content == null || content.isEmpty()) return null;
+        String plain = content
+                .replaceAll("```[a-zA-Z0-9]*", " ")
+                .replaceAll("[#>*`|]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        int idx = plain.toLowerCase().indexOf(lowerKw);
+        if (idx < 0) return null;
+        int start = Math.max(0, idx - SNIPPET_BEFORE);
+        int end = Math.min(plain.length(), idx + lowerKw.length() + SNIPPET_AFTER);
+        return (start > 0 ? "…" : "") + plain.substring(start, end) + (end < plain.length() ? "…" : "");
     }
 
     private String pathText(DocNode node, Map<Long, DocNode> all) {
