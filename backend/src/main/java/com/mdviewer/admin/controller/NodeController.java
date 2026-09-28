@@ -6,6 +6,7 @@ import com.mdviewer.admin.service.SyncService;
 import com.mdviewer.admin.service.UploadService;
 import com.mdviewer.common.Result;
 import com.mdviewer.domain.entity.DocNode;
+import com.mdviewer.domain.entity.DocVersion;
 import com.mdviewer.sync.VersionRegistry;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -167,6 +168,26 @@ public class NodeController {
             }
         }
         return Result.ok(syncService.importAll(payload));
+    }
+
+    // ---------- 版本历史（PRD P2） ----------
+
+    @GetMapping("/nodes/{id}/versions")
+    public Result<List<NodeService.VersionItem>> versions(@PathVariable Long id) {
+        return Result.ok(nodeService.listVersions(id));
+    }
+
+    @GetMapping("/nodes/{id}/versions/{versionId}")
+    public Result<DocVersion> version(@PathVariable Long id, @PathVariable Long versionId) {
+        return Result.ok(nodeService.getVersion(id, versionId));
+    }
+
+    public record RollbackReq(@NotNull Long versionId) {}
+
+    @PutMapping("/nodes/{id}/versions/{versionId}/rollback")
+    public Result<Void> rollback(@PathVariable Long id, @PathVariable Long versionId) {
+        nodeService.rollback(id, versionId, userId());
+        return Result.ok();
     }
 
     // ---------- 上传 ----------

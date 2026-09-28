@@ -304,6 +304,76 @@ class NodeServiceTest {
         assertEquals("dup.md(1)", restored.getName());
     }
 
+    // ---------- 版本历史 ----------
+
+    @Test
+    void saveContentSnapshotsOldVersion() {
+        DocNode d = doc(0L, "版本测试.md", "v1 内容");
+        // 内容不变：不落快照
+        nodeService.saveContent(d.getId(), "v1 内容", null);
+        assertEquals(0, nodeService.listVersions(d.getId()).size());
+
+        // 内容变化：旧内容落快照
+        nodeService.saveContent(d.getId(), "v2 内容", null);
+        var versions = nodeService.listVersions(d.getId());
+        assertEquals(1, versions.size());
+        assertEquals("v1 内容", nodeService.getVersion(d.getId(), versions.get(0).id()).getContent());
+        assertEquals(5, versions.get(0).length()); // "v1 内容" = 5 字符（含空格）
+    }
+
+    @Test
+    void rollbackSnapshotsCurrentAndAppliesOld() {
+        DocNode d = doc(0L, "回滚测试.md", "v1");
+        nodeService.saveContent(d.getId(), "v2", null);
+        nodeService.saveContent(d.getId(), "v3", null);
+        // 现在 content=v3，历史两条：v1、v2
+        var versions = nodeService.listVersions(d.getId());
+        assertEquals(2, versions.size());
+        Long v1Id = versions.get(1).id(); // 旧在前
+
+        // 回滚到 v1
+        nodeService.rollback(d.getId(), v1Id, 1L);
+        assertEquals("v1", nodeService.getDoc(d.getId()).getContent());
+        // 回滚把当前 v3 落为快照：历史 = v1、v2、v3 共 3 条
+        var after = nodeService.listVersions(d.getId());
+        assertEquals(3, after.size());
+        assertEquals("v3", nodeService.getVersion(d.getId(), after.get(0).id()).getContent());
+    }
+
+    @Test
+    void versionTrimKeepsLatest20() {
+        DocNode d = doc(0L, "修剪测试.md", "第0版");
+        for (int i = 1; i <= 25; i++) {
+            nodeService.saveContent(d.getId(), "第" + i + "版", null);
+        }
+        // 25 次保存 → 25 条快照 → 修剪后保留最近 20 条
+        assertEquals(20, nodeService.listVersions(d.getId()).size());
+        // 最旧的快照应是「第5版」（0-4 版被修剪）
+        var versions = nodeService.listVersions(d.getId());
+        assertEquals("第5版", nodeService.getVersion(d.getId(), versions.get(19).id()).getContent());
+        // 最新快照是「第24版」（第25版是当前内容，不入快照）
+        assertEquals("第24版", nodeService.getVersion(d.getId(), versions.get(0).id()).getContent());
+    }
+
+    @Test
+    void versionOperationsRejectFolderAndForeignDoc() {
+        DocNode f = folder(0L, "F");
+        // 文件夹没有版本历史
+        assertEquals(4041, assertThrows(BizException.class,
+                () -> nodeService.listVersions(f.getId())).getCode());
+
+        DocNode d = doc(0L, "甲.md", "a");
+        DocNode d2 = doc(0L, "乙.md", "b");
+        nodeService.saveContent(d.getId(), "a2", null);
+        var versions = nodeService.listVersions(d.getId());
+        Long vid = versions.get(0).id();
+        // 用别的文档 id 查这个版本：归属校验必须拦截
+        assertEquals(4041, assertThrows(BizException.class,
+                () -> nodeService.getVersion(d2.getId(), vid)).getCode());
+        assertEquals(4041, assertThrows(BizException.class,
+                () -> nodeService.rollback(d2.getId(), vid, 1L)).getCode());
+    }
+
     // ---------- 工具 ----------
 
     /** 物化路径的父路径：/1/5/ -> /1/；/16/ -> /；根返回 "/" 时 strip 后为 "" */

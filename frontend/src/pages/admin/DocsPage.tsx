@@ -4,6 +4,8 @@ import CodeEditor from '@uiw/react-textarea-code-editor';
 import { DocTree, type DropPosition } from '../../components/DocTree/DocTree';
 import { MarkdownViewer } from '../../components/markdown/MarkdownViewer';
 import { NameDialog } from '../../components/NameDialog';
+import { VersionHistoryDrawer } from '../../components/VersionHistoryDrawer';
+import { HistoryOutlined } from '@ant-design/icons';
 import { adminApi } from '../../api/adminApi';
 import { useDocTreeStore, type TreeItem } from '../../stores/docTreeStore';
 import './DocsPage.css';
@@ -28,6 +30,7 @@ export default function DocsPage() {
   );
   const [editing, setEditing] = useState(false);
   const [draftContent, setDraftContent] = useState('');
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   useEffect(() => {
     void load(); // 后台强制刷新（含草稿）
@@ -192,6 +195,9 @@ export default function DocsPage() {
             title={activeDoc.name}
             extra={
               <Space>
+                <Button icon={<HistoryOutlined />} onClick={() => setHistoryOpen(true)}>
+                  版本历史
+                </Button>
                 {editing ? (
                   <>
                     <Button onClick={() => setEditing(false)}>取消</Button>
@@ -248,6 +254,28 @@ export default function DocsPage() {
         confirmLoading={nameSubmitting}
         onOk={onNameOk}
         onCancel={() => setNameIntent(null)}
+      />
+      <VersionHistoryDrawer
+        open={historyOpen}
+        docId={activeDoc?.id ?? null}
+        docName={activeDoc?.name ?? ''}
+        onClose={() => setHistoryOpen(false)}
+        onRolledBack={() => {
+          // 回滚后重新拉当前文档内容刷新预览
+          if (selectedId != null) {
+            void (async () => {
+              try {
+                const { adminGetDoc } = await import('../../api/adminApiExtra');
+                const doc = await adminGetDoc(selectedId);
+                setActiveDoc({ id: selectedId, name: doc.name, content: doc.content });
+                setDraftContent(doc.content);
+                setEditing(false);
+              } catch {
+                // 刷新失败不打断，用户可手动重选
+              }
+            })();
+          }
+        }}
       />
     </>
   );

@@ -3,7 +3,9 @@ package com.mdviewer.admin.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mdviewer.common.BizException;
 import com.mdviewer.domain.entity.DocNode;
+import com.mdviewer.domain.entity.DocVersion;
 import com.mdviewer.domain.mapper.DocNodeMapper;
+import com.mdviewer.domain.mapper.DocVersionMapper;
 import com.mdviewer.sync.VersionRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,12 +23,17 @@ import java.util.Set;
 public class NodeService {
     /** 建议层级上限（PRD 3.4.1） */
     private static final int MAX_DEPTH = 5;
+    /** 每篇文档保留的版本数上限（PRD P2：最近 20 版） */
+    private static final int VERSION_KEEP = 20;
 
     private final DocNodeMapper nodeMapper;
+    private final DocVersionMapper versionMapper;
     private final VersionRegistry versionRegistry;
 
-    public NodeService(DocNodeMapper nodeMapper, VersionRegistry versionRegistry) {
+    public NodeService(DocNodeMapper nodeMapper, DocVersionMapper versionMapper,
+                       VersionRegistry versionRegistry) {
         this.nodeMapper = nodeMapper;
+        this.versionMapper = versionMapper;
         this.versionRegistry = versionRegistry;
     }
 
@@ -85,10 +92,28 @@ public class NodeService {
         if (content != null && content.length() > 2 * 1024 * 1024) {
             throw new BizException(4002, "内容超过 2MB 限制");
         }
+        // 版本快照：内容即将变化时，把「修改前」的内容落一条历史（PRD P2）
+        snapshotIfChanged(node, content, name);
         node.setContent(content == null ? "" : content);
         if (name != null && !name.isBlank()) node.setName(uniqueName(node.getParentId(), name, id));
         nodeMapper.updateById(node);
         versionRegistry.bump();
+    }
+
+    /** 保存版本快照：仅当内容/标题将发生实质变化时记录旧状态；修剪至最近 20 版 */
+    private void snapshotIfChanged(DocNode node, String newContent, String newName) {
+        String oldContent = node.getContent() == null ? "" : node.getContent();
+        String incoming = newContent == null ? "" : newContent;
+        String oldName = node.getName();
+        String incomingName = (newName == null || newName.isBlank()) ? oldName : newName;
+        if (oldContent.equals(incoming) && oldName.equals(incomingName)) return;
+
+        DocVersion snapshot = new DocVersion();
+        snapshot.setDocId(node.getId());
+        snapshot.setContent(oldContent);
+        snapshot.setName(oldName);
+        versionMapper.insert(snapshot);
+        versionMapper.trimToLatest(node.getId(), VERSION_KEEP);
     }
 
     // ---------- 移动/排序 ----------
@@ -266,6 +291,56 @@ public class NodeService {
     /** 回收站条目 DTO（isRoot 标记供前端折叠展示整树删除的顶层条目） */
     public record RecycleItem(Long id, Long parentId, String name, String type,
                               String path, String deletedAt, boolean isRoot) {}
+
+    // ---------- 版本历史（PRD P2） ----------
+
+    /** 版本条目 DTO：不回传 content 全量（列表页只要摘要） */
+    public record VersionItem(Long id, String name, Integer length,
+                              String preview, String createdAt, Long createdBy) {}
+
+    /** 版本列表：最近在前；preview 为内容前 120 字（压缩空白） */
+    public List<VersionItem> listVersions(Long docId) {
+        DocNode doc = getDoc(docId);
+        List<DocVersion> versions = versionMapper.selectList(
+                new LambdaQueryWrapper<DocVersion>()
+                        .eq(DocVersion::getDocId, doc.getId())
+                        .orderByDesc(DocVersion::getId));
+        return versions.stream().map(v -> new VersionItem(
+                        v.getId(), v.getName(),
+                        v.getContent() == null ? 0 : v.getContent().length(),
+                        preview(v.getContent()),
+                        v.getCreatedAt() == null ? null : v.getCreatedAt().toString(),
+                        v.getCreatedBy()))
+                .toList();
+    }
+
+    /** 取某版本全文（回滚预览用） */
+    public DocVersion getVersion(Long docId, Long versionId) {
+        DocNode doc = getDoc(docId);
+        DocVersion v = versionMapper.selectById(versionId);
+        if (v == null || !v.getDocId().equals(doc.getId())) {
+            throw new BizException(4041, "版本不存在");
+        }
+        return v;
+    }
+
+    /**
+     * 回滚到指定版本：直接走 saveContent——其内部 snapshotIfChanged 会把
+     * 当前内容自动落一条快照（保证可撤销回滚本身），无需在此手动插。
+     * 若回滚目标恰与当前内容一致，则零写入（天然幂等）。
+     */
+    @Transactional
+    public void rollback(Long docId, Long versionId, Long userId) {
+        DocVersion v = getVersion(docId, versionId);
+        saveContent(docId, v.getContent(), v.getName());
+    }
+
+    /** 内容预览：压缩空白后截 120 字 */
+    private static String preview(String content) {
+        if (content == null || content.isEmpty()) return "";
+        String collapsed = content.replaceAll("\\s+", " ").trim();
+        return collapsed.length() <= 120 ? collapsed : collapsed.substring(0, 120) + "…";
+    }
 
     // ---------- 内部工具 ----------
 

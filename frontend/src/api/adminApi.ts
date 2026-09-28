@@ -34,6 +34,16 @@ export interface ImportStats {
   skipped: number;
 }
 
+// 版本历史条目（列表摘要，content 需单独调 getVersion）
+export interface VersionItem {
+  id: number;
+  name: string | null;
+  length: number;
+  preview: string;
+  createdAt?: string;
+  createdBy?: number | null;
+}
+
 // 后台管理接口（JWT 鉴权）
 export const adminApi = {
   // ---- 认证 ----
@@ -83,6 +93,17 @@ export const adminApi = {
   exportAll: () => get<ExportPayload>('/admin/export'),
 
   importAll: (payload: ExportPayload) => post<ImportStats>('/admin/import', payload),
+
+  // ---- 版本历史 ----
+  listVersions: (docId: number) => get<VersionItem[]>(`/admin/nodes/${docId}/versions`),
+
+  getVersion: (docId: number, versionId: number) =>
+    get<{ id: number; docId: number; name: string | null; content: string }>(
+      `/admin/nodes/${docId}/versions/${versionId}`,
+    ),
+
+  rollback: (docId: number, versionId: number) =>
+    put<void>(`/admin/nodes/${docId}/versions/${versionId}/rollback`, { versionId }),
 
   // ---- 上传 ----
   /** 上传 .md 文件（多文件），返回 [{fileName, id, finalName}] */

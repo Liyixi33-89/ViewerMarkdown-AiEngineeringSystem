@@ -26,3 +26,14 @@ CREATE TABLE IF NOT EXISTS admin_user (
 
 CREATE INDEX IF NOT EXISTS idx_dn_parent ON doc_node (parent_id, deleted, status);
 CREATE INDEX IF NOT EXISTS idx_dn_name ON doc_node (name);
+
+-- 版本历史（PRD P2；与 sql/init.sql 冻结基线的 doc_version 结构一致）
+CREATE TABLE IF NOT EXISTS doc_version (
+  id         BIGINT PRIMARY KEY AUTO_INCREMENT,
+  doc_id     BIGINT NOT NULL,
+  content    CLOB NOT NULL,
+  name       VARCHAR(200),
+  created_by BIGINT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_dv_doc ON doc_version (doc_id, created_at);
