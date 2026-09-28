@@ -150,6 +150,25 @@ description: Linux 服务器部署前端静态资源 + Spring Boot 的坑位清�
     - 正确姿势：导出 → `jdbc.update("DELETE FROM doc_node")` 清空 → 导入（应全量 created）→
       再导入（应全量 skipped）两段断言，才是完整的幂等证明
 
+20. **SSE 过 nginx 必须显式关缓冲，否则事件被攒着不吐（2026-09-28 第三批）**
+    - 症状：后端 `/portal/events` 本机 curl 正常推；过 nginx 后客户端连接建立
+      却迟迟收不到事件（或攒满 proxy buffer 才一次性吐一堆）
+    - 根因：nginx 默认 `proxy_buffering on`——上游响应先落缓冲区，对
+      `text/event-stream` 长连接是灾难；gzip 默认也会压住流
+    - 修复：SSE 路径独立 location：
+      `proxy_buffering off; gzip off; proxy_http_version 1.1; proxy_set_header Connection ''; chunked_transfer_encoding off; add_header X-Accel-Buffering no always; proxy_read_timeout 3600s;`
+    - 验证手法：`curl -N`（--no-buffer）挂住后另开终端触发写操作，
+      秒级出现 `event: data` 即通；PS5.1 用 HttpClient ResponseHeadersRead 模式同样可验
+    - 前端兜底：EventSource 建立 5s 内没收到首推自动降级轮询（防旧后端/中间层拦截）
+
+21. **rollback 类操作复用写路径，别手动复制写逻辑（2026-09-28 版本历史）**
+    - 事故：rollback 里手动插「当前内容」快照后调 saveContent，而 saveContent 内部
+      的 snapshotIfChanged 又插一条——一次回滚产生两条重复快照
+    - 修复：rollback 删掉手动快照，只调 saveContent；「当前内容入历史」由
+      写路径统一负责，天然幂等（回滚目标与当前一致则零写入）
+    - 教训：**任何「包一层写操作」的高级操作，写副作用只该发生在一处**；
+      复用路径时先读它的内部副作用清单
+
 ## 部署快捷序列（复用模板）
 
 ```bash
